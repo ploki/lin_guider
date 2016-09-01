@@ -124,7 +124,7 @@ void settings::onOkButtonClick()
 
 	memset( bcast_ip, 0, sizeof(bcast_ip) );
 	bcast_ip_len = ui.lineEdit_IP->text().length();
-	memcpy( bcast_ip, ui.lineEdit_IP->text().toAscii().data(), MIN((int)sizeof(bcast_ip)-1, bcast_ip_len) );
+    memcpy( bcast_ip, ui.lineEdit_IP->text().toLatin1().data(), MIN((int)sizeof(bcast_ip)-1, bcast_ip_len) );
 
 	unsigned int parsed = 0, arg_len = 0;
 	const char *arg = NULL;
@@ -162,7 +162,7 @@ void settings::onOkButtonClick()
 	}
 	m_net_params.listen_port = port;
 
-	snprintf( m_net_params.listen_socket, sizeof(m_net_params.listen_socket), "%s", ui.lineEdit_lsocket->text().toAscii().data() );
+    snprintf( m_net_params.listen_socket, sizeof(m_net_params.listen_socket), "%s", ui.lineEdit_lsocket->text().toLatin1().data() );
 
 	m_net_params.use_tcp = ui.checkBox_useTCP->isChecked();
 

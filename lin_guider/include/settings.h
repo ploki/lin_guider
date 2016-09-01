@@ -23,7 +23,7 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-#include <QtGui/QDialog>
+#include <QDialog>
 #include "ui_settings.h"
 #include "server.h"
 #include "common.h"

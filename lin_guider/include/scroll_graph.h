@@ -23,7 +23,7 @@
 #ifndef CSCROLL_GRAPH_H_
 #define CSCROLL_GRAPH_H_
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QWidget>
 #include <QImage>
 #include <QPainter>

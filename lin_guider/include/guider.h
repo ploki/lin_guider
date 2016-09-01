@@ -23,7 +23,7 @@
 #ifndef GUIDER_H
 #define GUIDER_H
 
-#include <QtGui>
+#include <QtWidgets>
 
 #include "common.h"
 #include "ui_guider.h"

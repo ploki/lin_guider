@@ -21,7 +21,7 @@
  */
 
 #include <Qt>
-#include <QtGui>
+#include <QtWidgets>
 
 #include "setup_driver.h"
 #include "lin_guider.h"
@@ -313,7 +313,7 @@ void setup_driver::onOkButtonClick()
  char fname[64];
 
 
-	snprintf( fname, sizeof(fname), "%s", ui.lineEdit_IoDevice->text().toAscii().data() );
+	snprintf( fname, sizeof(fname), "%s", ui.lineEdit_IoDevice->text().toLatin1().data() );
 	if( params.next_device_type == io_drv::DT_LPT )
 	{
 		if( access( fname, R_OK|W_OK ) != 0 )

@@ -21,7 +21,7 @@
 
 #include "lin_guider.h"
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QApplication>
 
 int main(int argc, char *argv[])
