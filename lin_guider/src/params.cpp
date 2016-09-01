@@ -33,7 +33,7 @@
 
 
 
-params::params( QMainWindow *main_wnd )
+params::params()
 {
 	save_device_cfg = true;	// true if device was successuly initialized
 
@@ -91,8 +91,8 @@ params::params( QMainWindow *main_wnd )
 	// common params are initialized by ctor()
 
 	// drift view params are initialized by ctor()
-	assert( main_wnd );
-	m_main_wnd = main_wnd;
+
+	m_wnd_geometry_state.clear();
 }
 
 
@@ -143,27 +143,29 @@ bool params::load( void )
 		m_math_in_params.q_control_idx = settings.value( "q_control_idx", 0 ).toInt();
 		m_math_in_params.quality_threshold1 = settings.value( "quality_threshold1", 50 ).toDouble(&ok);
 		m_math_in_params.quality_threshold2 = settings.value( "quality_threshold2", 15 ).toDouble(&ok);
-		m_math_in_params.stability_limit_factor = settings.value( "stability_limit_factor", STABILITY_LIMIT_FACTOR ).toDouble(&ok);
+		m_math_in_params.stability_limit_factor = settings.value( "stability_limit_factor", lg_math::STABILITY_LIMIT_FACTOR ).toDouble(&ok);
 		m_math_in_params.guiding_rate = settings.value( "guiding_rate" ).toDouble(&ok);
-		m_math_in_params.enabled_dir[RA] = settings.value( "enabled_RA", true ).toBool();
-		m_math_in_params.enabled_dir[DEC] = settings.value( "enabled_DEC", true ).toBool();
-		m_math_in_params.enabled_dir_sign[RA][SGN_POS] = settings.value( "enabled_RA+", true ).toBool();
-		m_math_in_params.enabled_dir_sign[RA][SGN_NEG] = settings.value( "enabled_RA-", true ).toBool();
-		m_math_in_params.enabled_dir_sign[DEC][SGN_POS] = settings.value( "enabled_DEC+", true ).toBool();
-		m_math_in_params.enabled_dir_sign[DEC][SGN_NEG] = settings.value( "enabled_DEC-", true ).toBool();
+		m_math_in_params.guiding_normal_coef = lg_math::cgmath::precalc_proportional_gain(m_math_in_params.guiding_rate);
+		m_math_in_params.normalize_gain = settings.value( "normalize_gain" ).toBool();
+		m_math_in_params.enabled_dir[lg_math::RA] = settings.value( "enabled_RA", true ).toBool();
+		m_math_in_params.enabled_dir[lg_math::DEC] = settings.value( "enabled_DEC", true ).toBool();
+		m_math_in_params.enabled_dir_sign[lg_math::RA][lg_math::SGN_POS] = settings.value( "enabled_RA+", true ).toBool();
+		m_math_in_params.enabled_dir_sign[lg_math::RA][lg_math::SGN_NEG] = settings.value( "enabled_RA-", true ).toBool();
+		m_math_in_params.enabled_dir_sign[lg_math::DEC][lg_math::SGN_POS] = settings.value( "enabled_DEC+", true ).toBool();
+		m_math_in_params.enabled_dir_sign[lg_math::DEC][lg_math::SGN_NEG] = settings.value( "enabled_DEC-", true ).toBool();
 		m_math_in_params.average = settings.value( "average", true ).toBool();
-		m_math_in_params.accum_frame_cnt[RA] = settings.value( "accum_frame_cnt_RA", 1 ).toInt(&ok);
-		m_math_in_params.accum_frame_cnt[DEC] = settings.value( "accum_frame_cnt_DEC", 1 ).toInt(&ok);
-		m_math_in_params.proportional_gain[RA] = settings.value( "proportional_gain_RA" ).toDouble(&ok);
-		m_math_in_params.proportional_gain[DEC] = settings.value( "proportional_gain_DEC" ).toDouble(&ok);
-		m_math_in_params.integral_gain[RA] = settings.value( "integral_gain_RA" ).toDouble(&ok);
-		m_math_in_params.integral_gain[DEC] = settings.value( "integral_gain_DEC" ).toDouble(&ok);
-		m_math_in_params.derivative_gain[RA] = settings.value( "derivative_gain_RA" ).toDouble(&ok);
-		m_math_in_params.derivative_gain[DEC] = settings.value( "derivative_gain_DEC" ).toDouble(&ok);
-		m_math_in_params.max_pulse_length[RA] = settings.value( "max_pulse_length_RA" ).toInt(&ok);
-		m_math_in_params.max_pulse_length[DEC] = settings.value( "max_pulse_length_DEC" ).toInt(&ok);
-		m_math_in_params.min_pulse_length[RA] = settings.value( "min_pulse_length_RA" ).toInt(&ok);
-		m_math_in_params.min_pulse_length[DEC] = settings.value( "min_pulse_length_DEC" ).toInt(&ok);
+		m_math_in_params.accum_frame_cnt[lg_math::RA] = settings.value( "accum_frame_cnt_RA", 1 ).toInt(&ok);
+		m_math_in_params.accum_frame_cnt[lg_math::DEC] = settings.value( "accum_frame_cnt_DEC", 1 ).toInt(&ok);
+		m_math_in_params.proportional_gain[lg_math::RA] = settings.value( "proportional_gain_RA" ).toDouble(&ok);
+		m_math_in_params.proportional_gain[lg_math::DEC] = settings.value( "proportional_gain_DEC" ).toDouble(&ok);
+		m_math_in_params.integral_gain[lg_math::RA] = settings.value( "integral_gain_RA" ).toDouble(&ok);
+		m_math_in_params.integral_gain[lg_math::DEC] = settings.value( "integral_gain_DEC" ).toDouble(&ok);
+		m_math_in_params.derivative_gain[lg_math::RA] = settings.value( "derivative_gain_RA" ).toDouble(&ok);
+		m_math_in_params.derivative_gain[lg_math::DEC] = settings.value( "derivative_gain_DEC" ).toDouble(&ok);
+		m_math_in_params.max_pulse_length[lg_math::RA] = settings.value( "max_pulse_length_RA" ).toInt(&ok);
+		m_math_in_params.max_pulse_length[lg_math::DEC] = settings.value( "max_pulse_length_DEC" ).toInt(&ok);
+		m_math_in_params.min_pulse_length[lg_math::RA] = settings.value( "min_pulse_length_RA" ).toInt(&ok);
+		m_math_in_params.min_pulse_length[lg_math::DEC] = settings.value( "min_pulse_length_DEC" ).toInt(&ok);
 	settings.endGroup();
 
 	// capture params
@@ -196,8 +198,16 @@ bool params::load( void )
 	settings.beginGroup("ui");
 		m_ui_params.half_refresh_rate = settings.value( "half_refresh_rate" ).toBool();
 		m_ui_params.show_helper_TB = settings.value( "show_helper_TB", false ).toBool();
-		m_main_wnd->restoreGeometry( settings.value("main_wnd_geometry").toByteArray() );
-		m_main_wnd->restoreState( settings.value("main_wnd_state").toByteArray() );
+		{
+			QByteArray wnd_geometry = settings.value("main_wnd_geometry").toByteArray();
+			QByteArray wnd_state = settings.value("main_wnd_state").toByteArray();
+			set_wnd_geometry_state( "main_wnd", std::make_pair( wnd_geometry, wnd_state ) );
+		}
+		{
+			QByteArray wnd_geometry = settings.value("guider_wnd_geometry").toByteArray();
+			QByteArray wnd_state = settings.value("guider_wnd_state").toByteArray();
+			set_wnd_geometry_state( "guider_wnd", std::make_pair( wnd_geometry, wnd_state ) );
+		}
 	settings.endGroup();
 
 	// guider params
@@ -215,8 +225,8 @@ bool params::load( void )
 	// calibration params
 	settings.beginGroup("calibration");
 		m_calibration_params.two_axis = settings.value( "two_axis", false ).toBool();
-    	m_calibration_params.auto_mode = settings.value( "auto_mode", false ).toBool();
-	    m_calibration_params.dift_time = settings.value( "dift_time", 25 ).toInt(&ok);
+		m_calibration_params.auto_mode = settings.value( "auto_mode", false ).toBool();
+		m_calibration_params.dift_time = settings.value( "dift_time", 25 ).toInt(&ok);
 		m_calibration_params.frame_count = settings.value( "frame_count", 10 ).toInt(&ok);
 	settings.endGroup();
 
@@ -241,13 +251,20 @@ bool params::load( void )
 		m_common_params.dithering_rest_tout = settings.value( "dithering_rest_tout", 3 ).toInt();
 		DBG_VERBOSITY = settings.value( "dbg_verbosity", false ).toBool();
 		m_common_params.hfd_on = settings.value( "hfd_on", false ).toBool();
-		m_common_params.square_index = settings.value( "square_index", DEFAULT_SQR ).toInt();
+		m_common_params.square_index = settings.value( "square_index", lg_math::cgmath::DEFAULT_SQR ).toInt();
+		m_common_params.reticle_angle = settings.value( "reticle_angle", 0 ).toDouble(&ok);
+		m_common_params.osf_size_kx = settings.value( "osf_size_kx", 1 ).toDouble(&ok);
+		m_common_params.osf_size_ky = settings.value( "osf_size_ky", 1 ).toDouble(&ok);
+		m_common_params.guider_algorithm = settings.value( "guider_algorithm", (int)lg_math::GA_CENTROID ).toInt();
 	settings.endGroup();
 
 	// drift view
 	settings.beginGroup("guider_drift_view");
+		m_drift_view_params.graph_type = (guider::graph_type_t)settings.value( "graph_type", guider::GRAPH_SCROLL ).toInt();
 		m_drift_view_params.drift_graph_xrange = settings.value( "drift_graph_xrange", 300 ).toInt();
 		m_drift_view_params.drift_graph_yrange = settings.value( "drift_graph_yrange", 60 ).toInt();
+		m_drift_view_params.cell_nx = settings.value( "cell_nx", 6 ).toInt();
+		m_drift_view_params.cell_ny = settings.value( "cell_ny", 6 ).toInt();
 	settings.endGroup();
 
 	// load device config
@@ -300,25 +317,26 @@ bool params::save( void )
 		settings.setValue( "quality_threshold2", m_math_in_params.quality_threshold2 );
 		settings.setValue( "stability_limit_factor", m_math_in_params.stability_limit_factor );
 		settings.setValue( "guiding_rate", m_math_in_params.guiding_rate );
-		settings.setValue( "enabled_RA", m_math_in_params.enabled_dir[RA] );
-		settings.setValue( "enabled_DEC", m_math_in_params.enabled_dir[DEC] );
-		settings.setValue( "enabled_RA+", m_math_in_params.enabled_dir_sign[RA][SGN_POS] );
-		settings.setValue( "enabled_RA-", m_math_in_params.enabled_dir_sign[RA][SGN_NEG] );
-		settings.setValue( "enabled_DEC+", m_math_in_params.enabled_dir_sign[DEC][SGN_POS] );
-		settings.setValue( "enabled_DEC-", m_math_in_params.enabled_dir_sign[DEC][SGN_NEG] );
+		settings.setValue( "normalize_gain", m_math_in_params.normalize_gain );
+		settings.setValue( "enabled_RA", m_math_in_params.enabled_dir[lg_math::RA] );
+		settings.setValue( "enabled_DEC", m_math_in_params.enabled_dir[lg_math::DEC] );
+		settings.setValue( "enabled_RA+", m_math_in_params.enabled_dir_sign[lg_math::RA][lg_math::SGN_POS] );
+		settings.setValue( "enabled_RA-", m_math_in_params.enabled_dir_sign[lg_math::RA][lg_math::SGN_NEG] );
+		settings.setValue( "enabled_DEC+", m_math_in_params.enabled_dir_sign[lg_math::DEC][lg_math::SGN_POS] );
+		settings.setValue( "enabled_DEC-", m_math_in_params.enabled_dir_sign[lg_math::DEC][lg_math::SGN_NEG] );
 		settings.setValue( "average", m_math_in_params.average );
-		settings.setValue( "accum_frame_cnt_RA", (unsigned)m_math_in_params.accum_frame_cnt[RA] );
-		settings.setValue( "accum_frame_cnt_DEC", (unsigned)m_math_in_params.accum_frame_cnt[DEC] );
-		settings.setValue( "proportional_gain_RA", m_math_in_params.proportional_gain[RA] );
-		settings.setValue( "proportional_gain_DEC", m_math_in_params.proportional_gain[DEC] );
-		settings.setValue( "integral_gain_RA", m_math_in_params.integral_gain[RA] );
-		settings.setValue( "integral_gain_DEC", m_math_in_params.integral_gain[DEC] );
-		settings.setValue( "derivative_gain_RA", m_math_in_params.derivative_gain[RA] );
-		settings.setValue( "derivative_gain_DEC", m_math_in_params.derivative_gain[DEC] );
-		settings.setValue( "max_pulse_length_RA", m_math_in_params.max_pulse_length[RA] );
-		settings.setValue( "max_pulse_length_DEC", m_math_in_params.max_pulse_length[DEC] );
-		settings.setValue( "min_pulse_length_RA", m_math_in_params.min_pulse_length[RA] );
-		settings.setValue( "min_pulse_length_DEC", m_math_in_params.min_pulse_length[DEC] );
+		settings.setValue( "accum_frame_cnt_RA", (unsigned)m_math_in_params.accum_frame_cnt[lg_math::RA] );
+		settings.setValue( "accum_frame_cnt_DEC", (unsigned)m_math_in_params.accum_frame_cnt[lg_math::DEC] );
+		settings.setValue( "proportional_gain_RA", m_math_in_params.proportional_gain[lg_math::RA] );
+		settings.setValue( "proportional_gain_DEC", m_math_in_params.proportional_gain[lg_math::DEC] );
+		settings.setValue( "integral_gain_RA", m_math_in_params.integral_gain[lg_math::RA] );
+		settings.setValue( "integral_gain_DEC", m_math_in_params.integral_gain[lg_math::DEC] );
+		settings.setValue( "derivative_gain_RA", m_math_in_params.derivative_gain[lg_math::RA] );
+		settings.setValue( "derivative_gain_DEC", m_math_in_params.derivative_gain[lg_math::DEC] );
+		settings.setValue( "max_pulse_length_RA", m_math_in_params.max_pulse_length[lg_math::RA] );
+		settings.setValue( "max_pulse_length_DEC", m_math_in_params.max_pulse_length[lg_math::DEC] );
+		settings.setValue( "min_pulse_length_RA", m_math_in_params.min_pulse_length[lg_math::RA] );
+		settings.setValue( "min_pulse_length_DEC", m_math_in_params.min_pulse_length[lg_math::DEC] );
 	settings.endGroup();
 
 	// capture params
@@ -352,8 +370,22 @@ bool params::save( void )
 	settings.beginGroup( "ui" );
 		settings.setValue( "half_refresh_rate", m_ui_params.half_refresh_rate );
 		settings.setValue( "show_helper_TB", m_ui_params.show_helper_TB );
-		settings.setValue("main_wnd_geometry", m_main_wnd->saveGeometry() );
-		settings.setValue("main_wnd_state", m_main_wnd->saveState() );
+		{
+			std::map< std::string, std::pair< QByteArray, QByteArray > >::const_iterator it = m_wnd_geometry_state.find( "main_wnd" );
+			if( it != m_wnd_geometry_state.end() )
+			{
+				settings.setValue("main_wnd_geometry", it->second.first );
+				settings.setValue("main_wnd_state", it->second.second );
+			}
+		}
+		{
+			std::map< std::string, std::pair< QByteArray, QByteArray > >::const_iterator it = m_wnd_geometry_state.find( "guider_wnd" );
+			if( it != m_wnd_geometry_state.end() )
+			{
+				settings.setValue("guider_wnd_geometry", it->second.first );
+				settings.setValue("guider_wnd_state", it->second.second );
+			}
+		}
 	settings.endGroup();
 
 	// guider params
@@ -396,12 +428,19 @@ bool params::save( void )
 		settings.setValue( "dbg_verbosity", DBG_VERBOSITY );
 		settings.setValue( "hfd_on", m_common_params.hfd_on );
 		settings.setValue( "square_index", m_common_params.square_index );
+		settings.setValue( "reticle_angle", m_common_params.reticle_angle );
+		settings.setValue( "osf_size_kx", m_common_params.osf_size_kx );
+		settings.setValue( "osf_size_ky", m_common_params.osf_size_ky );
+		settings.setValue( "guider_algorithm", m_common_params.guider_algorithm );
 	settings.endGroup();
 
 	// drift view
 	settings.beginGroup("guider_drift_view");
+		settings.setValue( "graph_type", m_drift_view_params.graph_type );
 		settings.setValue( "drift_graph_xrange", m_drift_view_params.drift_graph_xrange );
 		settings.setValue( "drift_graph_yrange", m_drift_view_params.drift_graph_yrange );
+		settings.setValue( "cell_nx", m_drift_view_params.cell_nx );
+		settings.setValue( "cell_ny", m_drift_view_params.cell_ny );
 	settings.endGroup();
 
 	// save device config

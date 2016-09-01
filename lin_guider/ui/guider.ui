@@ -6,14 +6,20 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
+    <width>621</width>
     <height>480</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="minimumSize">
    <size>
-    <width>640</width>
-    <height>480</height>
+    <width>0</width>
+    <height>0</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -68,28 +74,6 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="0" colspan="4">
-         <widget class="QFrame" name="frame_Graph">
-          <property name="minimumSize">
-           <size>
-            <width>300</width>
-            <height>300</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>300</width>
-            <height>300</height>
-           </size>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Raised</enum>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="0">
          <widget class="QLabel" name="l_7">
           <property name="text">
@@ -105,6 +89,9 @@
           <property name="minimum">
            <number>10</number>
           </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
          </widget>
         </item>
         <item row="1" column="2">
@@ -113,6 +100,32 @@
            <string>Y scale(&quot;)</string>
           </property>
          </widget>
+        </item>
+        <item row="0" column="0" colspan="4">
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QFrame" name="frame_Graph">
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>300</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>300</width>
+              <height>300</height>
+             </size>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>
@@ -142,7 +155,7 @@
         <item row="0" column="2" colspan="2">
          <widget class="QLabel" name="l_28">
           <property name="text">
-           <string>Thresh. alg.</string>
+           <string>De-noise</string>
           </property>
          </widget>
         </item>
@@ -159,23 +172,10 @@
         <item row="0" column="4">
          <widget class="QComboBox" name="comboBox_ThresholdAlg"/>
         </item>
-        <item row="1" column="3">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_QualityThreshold1">
-          <property name="minimum">
-           <double>3.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>95.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>50.000000000000000</double>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="4">
          <widget class="QDoubleSpinBox" name="doubleSpinBox_QualityThreshold2">
           <property name="minimum">
-           <double>3.000000000000000</double>
+           <double>2.000000000000000</double>
           </property>
           <property name="maximum">
            <double>95.000000000000000</double>
@@ -192,14 +192,27 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1" colspan="2">
+        <item row="1" column="2" colspan="2">
+         <widget class="QDoubleSpinBox" name="doubleSpinBox_QualityThreshold1">
+          <property name="minimum">
+           <double>2.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>95.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>50.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
          <widget class="QCheckBox" name="checkBox_SaveLog">
           <property name="text">
            <string>save drift</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="3" colspan="2">
+        <item row="2" column="2" colspan="3">
          <widget class="QLineEdit" name="lineEdit_DriftFileName">
           <property name="maxLength">
            <number>32</number>
@@ -377,8 +390,43 @@
           </property>
          </widget>
         </item>
+        <item row="3" column="0" colspan="4">
+         <widget class="QLabel" name="l_Status">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Sunken</enum>
+          </property>
+          <property name="text">
+           <string>status</string>
+          </property>
+          <property name="margin">
+           <number>2</number>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
      </item>
      <item>
       <widget class="QGroupBox" name="groupBox_Control">
@@ -392,42 +440,93 @@
         <property name="spacing">
          <number>4</number>
         </property>
-        <item row="2" column="0" colspan="2">
+        <item row="12" column="2">
+         <widget class="QLabel" name="l_DeltaRA">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Sunken</enum>
+          </property>
+          <property name="text">
+           <string>xxxx</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0" colspan="2">
          <widget class="QLabel" name="l_15">
           <property name="text">
            <string>Accumulate frames</string>
           </property>
          </widget>
         </item>
-        <item row="6" column="0" colspan="2">
-         <widget class="QLabel" name="l_30">
+        <item row="13" column="3">
+         <widget class="QLabel" name="l_PulseDEC">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Sunken</enum>
+          </property>
           <property name="text">
-           <string>Derivative gain</string>
+           <string>xxxx</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
           </property>
          </widget>
         </item>
-        <item row="5" column="0" colspan="2">
+        <item row="7" column="0" colspan="2">
          <widget class="QLabel" name="l_17">
           <property name="text">
            <string>Integral gain</string>
           </property>
          </widget>
         </item>
-        <item row="7" column="3">
-         <widget class="QSpinBox" name="spinBox_MaxPulseDEC">
-          <property name="maximum">
-           <number>9999</number>
+        <item row="14" column="0">
+         <widget class="QLabel" name="l_34">
+          <property name="text">
+           <string>RMS,&quot;</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="2">
+        <item row="3" column="2">
          <widget class="QSpinBox" name="spinBox_AccFramesRA">
           <property name="minimum">
            <number>1</number>
           </property>
          </widget>
         </item>
-        <item row="12" column="3">
+        <item row="8" column="0" colspan="2">
+         <widget class="QLabel" name="l_30">
+          <property name="text">
+           <string>Derivative gain</string>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="3">
+         <widget class="QSpinBox" name="spinBox_MaxPulseDEC">
+          <property name="maximum">
+           <number>9999</number>
+          </property>
+         </widget>
+        </item>
+        <item row="14" column="3">
          <widget class="QLabel" name="l_ErrDEC">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -452,24 +551,24 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="3">
+        <item row="8" column="3">
          <widget class="QDoubleSpinBox" name="spinBox_DerGainDEC">
           <property name="decimals">
-           <number>1</number>
+           <number>2</number>
           </property>
           <property name="maximum">
            <double>1000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="11" column="0" colspan="2">
+        <item row="13" column="0" colspan="2">
          <widget class="QLabel" name="l_33">
           <property name="text">
            <string>Pulse length, ms</string>
           </property>
          </widget>
         </item>
-        <item row="10" column="3">
+        <item row="12" column="3">
          <widget class="QLabel" name="l_DeltaDEC">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -491,65 +590,58 @@
           </property>
          </widget>
         </item>
-        <item row="8" column="2">
+        <item row="10" column="2">
          <widget class="QSpinBox" name="spinBox_MinPulseRA">
           <property name="maximum">
            <number>9999</number>
           </property>
          </widget>
         </item>
-        <item row="6" column="2">
+        <item row="8" column="2">
          <widget class="QDoubleSpinBox" name="spinBox_DerGainRA">
           <property name="decimals">
-           <number>1</number>
+           <number>2</number>
           </property>
           <property name="maximum">
            <double>1000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="8" column="0" colspan="2">
+        <item row="10" column="0" colspan="2">
          <widget class="QLabel" name="l_32">
           <property name="text">
            <string>Minimum pulse</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="0" colspan="2">
-         <widget class="QLabel" name="l_14">
-          <property name="text">
-           <string>Enable directions</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="3">
+        <item row="6" column="3">
          <widget class="QDoubleSpinBox" name="spinBox_PropGainDEC">
           <property name="decimals">
-           <number>1</number>
+           <number>2</number>
           </property>
           <property name="maximum">
            <double>1000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="4" column="0" colspan="2">
+        <item row="6" column="0" colspan="2">
          <widget class="QLabel" name="l_16">
           <property name="text">
            <string>Proportional gain</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="2">
+        <item row="6" column="2">
          <widget class="QDoubleSpinBox" name="spinBox_PropGainRA">
           <property name="decimals">
-           <number>1</number>
+           <number>2</number>
           </property>
           <property name="maximum">
            <double>1000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="10" column="0">
+        <item row="12" column="0">
          <widget class="QLabel" name="l_36">
           <property name="text">
            <string>Delta ,&quot;</string>
@@ -594,22 +686,6 @@
           </layout>
          </widget>
         </item>
-        <item row="13" column="1">
-         <widget class="QLabel" name="l_Quality">
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Sunken</enum>
-          </property>
-          <property name="text">
-           <string>xxx</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="2">
          <widget class="QGroupBox" name="groupBox_DirRA">
           <property name="title">
@@ -648,24 +724,24 @@
           </layout>
          </widget>
         </item>
-        <item row="5" column="2">
+        <item row="7" column="2">
          <widget class="QDoubleSpinBox" name="spinBox_IntGainRA">
           <property name="decimals">
-           <number>1</number>
+           <number>2</number>
           </property>
           <property name="maximum">
            <double>1000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="7" column="0" colspan="2">
+        <item row="9" column="0" colspan="2">
          <widget class="QLabel" name="l_31">
           <property name="text">
            <string>Maximum pulse</string>
           </property>
          </widget>
         </item>
-        <item row="12" column="2">
+        <item row="14" column="2">
          <widget class="QLabel" name="l_ErrRA">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -690,21 +766,21 @@
           </property>
          </widget>
         </item>
-        <item row="7" column="2">
+        <item row="9" column="2">
          <widget class="QSpinBox" name="spinBox_MaxPulseRA">
           <property name="maximum">
            <number>9999</number>
           </property>
          </widget>
         </item>
-        <item row="8" column="3">
+        <item row="10" column="3">
          <widget class="QSpinBox" name="spinBox_MinPulseDEC">
           <property name="maximum">
            <number>9999</number>
           </property>
          </widget>
         </item>
-        <item row="11" column="2">
+        <item row="13" column="2">
          <widget class="QLabel" name="l_PulseRA">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -726,106 +802,109 @@
           </property>
          </widget>
         </item>
-        <item row="13" column="3">
+        <item row="15" column="3">
          <widget class="QPushButton" name="pushButton_StartStop">
           <property name="text">
            <string>Start</string>
           </property>
          </widget>
         </item>
-        <item row="5" column="3">
-         <widget class="QDoubleSpinBox" name="spinBox_IntGainDEC">
-          <property name="decimals">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <double>1000.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="13" column="2">
-         <widget class="QCheckBox" name="checkBox_AverageFrames">
-          <property name="text">
-           <string>avg.frm.</string>
-          </property>
-         </widget>
-        </item>
-        <item row="11" column="3">
-         <widget class="QLabel" name="l_PulseDEC">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Sunken</enum>
-          </property>
-          <property name="text">
-           <string>xxxx</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="12" column="0">
-         <widget class="QLabel" name="l_34">
-          <property name="text">
-           <string>RMS,&quot;</string>
-          </property>
-         </widget>
-        </item>
-        <item row="10" column="2">
-         <widget class="QLabel" name="l_DeltaRA">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Sunken</enum>
-          </property>
-          <property name="text">
-           <string>xxxx</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="3">
-         <widget class="QSpinBox" name="spinBox_AccFramesDEC">
-          <property name="minimum">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-        <item row="9" column="0" colspan="4">
+        <item row="11" column="0" colspan="4">
          <widget class="Line" name="line_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>
-        <item row="3" column="0" colspan="4">
-         <widget class="Line" name="line">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+        <item row="3" column="3">
+         <widget class="QSpinBox" name="spinBox_AccFramesDEC">
+          <property name="minimum">
+           <number>1</number>
           </property>
          </widget>
         </item>
-        <item row="13" column="0">
+        <item row="7" column="3">
+         <widget class="QDoubleSpinBox" name="spinBox_IntGainDEC">
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="maximum">
+           <double>1000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="15" column="0">
          <widget class="QLabel" name="l_35">
           <property name="text">
            <string>Quality,%</string>
+          </property>
+         </widget>
+        </item>
+        <item row="15" column="2">
+         <widget class="QLabel" name="l_Quality">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Sunken</enum>
+          </property>
+          <property name="text">
+           <string>xxx</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0" colspan="2">
+         <widget class="QLabel" name="l_14">
+          <property name="text">
+           <string>Enable directions</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0" colspan="2">
+         <widget class="QLabel" name="l_37">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Flags</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QCheckBox" name="checkBox_normalizeGain">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Normalize gain coefficients</string>
+          </property>
+          <property name="text">
+           <string>norm.gain</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="3">
+         <widget class="QCheckBox" name="checkBox_AverageFrames">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Average frames</string>
+          </property>
+          <property name="text">
+           <string>avg.frm.</string>
           </property>
          </widget>
         </item>
@@ -851,9 +930,11 @@
   <tabstop>groupBox_DirRA</tabstop>
   <tabstop>checkBox_DirRAPlus</tabstop>
   <tabstop>checkBox_DirRAMinus</tabstop>
-  <tabstop>groupBox_DirDEC</tabstop>
   <tabstop>checkBox_DirDECPlus</tabstop>
+  <tabstop>groupBox_DirDEC</tabstop>
   <tabstop>checkBox_DirDECMinus</tabstop>
+  <tabstop>checkBox_normalizeGain</tabstop>
+  <tabstop>checkBox_AverageFrames</tabstop>
   <tabstop>spinBox_AccFramesRA</tabstop>
   <tabstop>spinBox_AccFramesDEC</tabstop>
   <tabstop>spinBox_PropGainRA</tabstop>
@@ -866,7 +947,6 @@
   <tabstop>spinBox_MaxPulseDEC</tabstop>
   <tabstop>spinBox_MinPulseRA</tabstop>
   <tabstop>spinBox_MinPulseDEC</tabstop>
-  <tabstop>checkBox_AverageFrames</tabstop>
   <tabstop>pushButton_StartStop</tabstop>
  </tabstops>
  <resources/>

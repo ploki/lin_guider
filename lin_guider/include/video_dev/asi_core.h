@@ -37,6 +37,8 @@
 
 #define V4L2_CID_USER_BANDWIDTH (V4L2_CID_USER_CLASS + 1)
 #define V4L2_CID_USER_CLEAR_BUFFS (V4L2_CID_USER_CLASS + 2)
+#define V4L2_CID_USER_FORCE_BW (V4L2_CID_USER_CLASS + 3)
+#define V4L2_CID_USER_ASI8BIT (V4L2_CID_USER_CLASS + 4)
 
 /*
  * ZWO ASI camera core class
@@ -53,7 +55,6 @@ protected:
 	static int m_height;
 	static int m_binX;
 	static int m_binY;
-	static int m_bandwidth;
 	static bool m_clear_buffs;
 	static unsigned char m_bpp;
 	static ASI_IMG_TYPE m_img_type;
@@ -64,6 +65,10 @@ protected:
 	static bool m_has_gain;
 	static ASI_CONTROL_CAPS m_bwidth_caps;
 	static bool m_has_bwidth;
+	static ASI_CONTROL_CAPS m_wb_r_caps;
+	static bool m_has_wb_r;
+	static ASI_CONTROL_CAPS m_wb_b_caps;
+	static bool m_has_wb_b;
 
 	static ASI_CAMERA_INFO m_cam_info;
 	static int m_camera;
@@ -73,9 +78,12 @@ protected:
 	bool start_exposure();
 	bool abort_exposure();
 	bool set_camera_exposure(long exp_time);
-	bool set_camera_gain(unsigned char gain);
-	void get_camera_image_type();
+	bool set_camera_gain(unsigned int gain);
+	void set_camera_image_type(ASI_IMG_TYPE img_type);
+	void update_camera_image_type();
 	bool set_band_width(unsigned char bwidth);
+	bool set_wb_r(unsigned char wb_r);
+	bool set_wb_b(unsigned char wb_b);
 	bool read_image(char *buf, int buf_size, long exp_time);
 	void lock( void ) const;
 	void unlock( void ) const;
@@ -107,5 +115,4 @@ private:
 	static int m_ref_count;
 	static pthread_mutex_t m_mutex;
 };
-
 #endif /* ASI_CORE_H_ */

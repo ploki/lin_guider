@@ -62,7 +62,7 @@
    <item row="1" column="0" colspan="3">
     <widget class="QGroupBox" name="groupBox_Video">
      <property name="title">
-      <string>Video</string>
+      <string>Camera</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
       <property name="margin">
@@ -253,7 +253,7 @@
          <number>10</number>
         </property>
         <property name="maximum">
-         <number>2048</number>
+         <number>8196</number>
         </property>
         <property name="singleStep">
          <number>1</number>
@@ -273,7 +273,7 @@
          <number>10</number>
         </property>
         <property name="maximum">
-         <number>2048</number>
+         <number>8196</number>
         </property>
        </widget>
       </item>

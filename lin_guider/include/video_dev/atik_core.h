@@ -32,6 +32,7 @@
 #include "utils.h"
 #include "atikccdusb.h"
 
+#define V4L2_CID_ATIK_DODEBAYER (V4L2_CID_USER_CLASS + 1)
 
 #define CAM_MAX 5
 
@@ -58,7 +59,9 @@ public:
 			pixel_size_Y( 0 ),
 			max_bin_X( 0 ),
 			max_bin_Y( 0 ),
-			cooler( COOLER_NONE )
+			color_type( COLOUR_NONE ),
+			offsetX (0),
+			offsetY (0)
 		{}
 		const char* name;
 		CAMERA_TYPE type;
@@ -67,7 +70,9 @@ public:
 		unsigned pixel_count_X, pixel_count_Y;
 		double pixel_size_X, pixel_size_Y;
 		unsigned max_bin_X, max_bin_Y;
-		COOLER_TYPE cooler;
+		COLOUR_TYPE color_type;
+		int offsetX;
+		int offsetY;
 	};
 	atik_core() {}
 	virtual ~atik_core() {}

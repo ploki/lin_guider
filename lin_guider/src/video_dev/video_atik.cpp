@@ -50,8 +50,11 @@ namespace video_drv
 
 
 cvideo_atik::cvideo_atik() :
-	m_expstart( 0 )
+	m_expstart( 0 ),
+	m_do_debayer( false )
 {
+	const atik_core::caps_s& caps = get_caps();
+	if (caps.color_type == COLOUR_RGGB) m_do_debayer = true;
 	device_type = DT_ATIK;
 }
 
@@ -95,6 +98,8 @@ time_fract_t cvideo_atik::set_fps( const time_fract &new_fps )
 
 int cvideo_atik::open_device( void )
 {
+	capture_params.ext_params.insert( std::make_pair( V4L2_CID_ATIK_DODEBAYER, m_do_debayer ) );
+	m_do_debayer = capture_params.ext_params[ V4L2_CID_ATIK_DODEBAYER ];
 	return open();
 }
 
@@ -112,7 +117,7 @@ int  cvideo_atik::get_vcaps( void )
 	AtikCamera* camera = get_camera();
 	const atik_core::caps_s& caps = get_caps();
 
-	device_formats[0].format = V4L2_PIX_FMT_Y16;
+	device_formats[0].format = get_pix_fmt();
 
 	pt.x = caps.pixel_count_X;
 	pt.y = caps.pixel_count_Y;
@@ -129,6 +134,7 @@ int  cvideo_atik::get_vcaps( void )
 	device_formats[0].frame_table[ i ].fps_table[ 9 ] = time_fract::mk_fps( 1, 3 );
 	device_formats[0].frame_table[ i ].fps_table[ 10 ] = time_fract::mk_fps( 1, 5 );
 	device_formats[0].frame_table[ i ].fps_table[ 11 ] = time_fract::mk_fps( 1, 10 );
+	device_formats[0].frame_table[ i ].fps_table[ 12 ] = time_fract::mk_fps( 1, 20 );
 	i++;
 
 	if (caps.max_bin_X >= 2 && caps.max_bin_Y >= 2) {
@@ -147,6 +153,7 @@ int  cvideo_atik::get_vcaps( void )
 		device_formats[0].frame_table[ i ].fps_table[ 9 ] = time_fract::mk_fps( 1, 3 );
 		device_formats[0].frame_table[ i ].fps_table[ 10 ] = time_fract::mk_fps( 1, 5 );
 		device_formats[0].frame_table[ i ].fps_table[ 11 ] = time_fract::mk_fps( 1, 10 );
+		device_formats[0].frame_table[ i ].fps_table[ 12 ] = time_fract::mk_fps( 1, 20 );
 		i++;
 	}
 
@@ -167,6 +174,7 @@ int  cvideo_atik::get_vcaps( void )
 		device_formats[0].frame_table[ i ].fps_table[ 9 ] = time_fract::mk_fps( 1, 3 );
 		device_formats[0].frame_table[ i ].fps_table[ 10 ] = time_fract::mk_fps( 1, 5 );
 		device_formats[0].frame_table[ i ].fps_table[ 11 ] = time_fract::mk_fps( 1, 10 );
+		device_formats[0].frame_table[ i ].fps_table[ 12 ] = time_fract::mk_fps( 1, 20 );
 		i++;
 	}
 
@@ -182,6 +190,21 @@ int  cvideo_atik::get_vcaps( void )
 	return 0;
 }
 
+unsigned int cvideo_atik::get_pix_fmt( void )
+{
+	if(!m_do_debayer) return V4L2_PIX_FMT_Y16;
+
+	const atik_core::caps_s& caps = get_caps();
+	if((caps.offsetX == 0) && (caps.offsetY == 0))
+		return V4L2_PIX_FMT_SRGGB12;
+	else if((caps.offsetX == 1) && (caps.offsetY == 0))
+		return V4L2_PIX_FMT_SGRBG12;
+	else if((caps.offsetX == 0) && (caps.offsetY == 1))
+		return V4L2_PIX_FMT_SGBRG12;
+	else if((caps.offsetX == 1) && (caps.offsetY == 1))
+		return V4L2_PIX_FMT_SBGGR12;
+	return 0;
+}
 
 int  cvideo_atik::set_control( unsigned int control_id, const param_val_t &val )
 {
@@ -198,6 +221,18 @@ int  cvideo_atik::set_control( unsigned int control_id, const param_val_t &val )
 		init_lut_to8bit( top );
 
 		capture_params.exposure = v;
+		break;
+	}
+	case V4L2_CID_ATIK_DODEBAYER:
+	{
+		int v = val.values[0];
+		v = v < 0 ? 0 : v;
+		v = v > 1 ? 1 : v;
+		capture_params.ext_params[ control_id ] = v;
+		m_do_debayer = (v == 1);
+		capture_params.pixel_format = get_pix_fmt();
+		get_vcaps();
+		log_i( "Debayering is %s", m_do_debayer ? "ON" : "OFF" );
 		break;
 	}
 	default:
@@ -405,7 +440,7 @@ int cvideo_atik::set_format( void )
 	int i, j;
 	point_t pt = {0, 0};
 
-	capture_params.pixel_format = V4L2_PIX_FMT_Y16;
+	capture_params.pixel_format = get_pix_fmt();
 	for( i = 0; i < MAX_FMT && device_formats[i].format;i++ ) {
 		if( device_formats[i].format != capture_params.pixel_format )
 			continue;
@@ -447,6 +482,20 @@ int cvideo_atik::enum_controls( void )
 	queryctrl.flags = 0;
 	// Add control to control list
 	controls = add_control( -1, &queryctrl, controls, &n );
+
+	// create virtual control (extended ctl)
+	// Older colour Atiks do not report themseves as colour, however the pattern is RGGB
+	// that is why enforce debayering is available even if the camera reports MONO
+	queryctrl.id = V4L2_CID_ATIK_DODEBAYER;
+	queryctrl.type = V4L2_CTRL_TYPE_BOOLEAN;
+	snprintf( (char*)queryctrl.name, sizeof(queryctrl.name)-1, "Debayer RGB pattern" );
+	queryctrl.minimum = 0;
+	queryctrl.maximum = 1;
+	queryctrl.step = 1;
+	queryctrl.default_value = m_do_debayer;
+	queryctrl.flags = 0;
+	// Add control to control list
+	controls = add_control( -1, &queryctrl, controls, &n, true );
 
 	num_controls = n;
 

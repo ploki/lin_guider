@@ -27,10 +27,10 @@
 
 #include "common.h"
 #include "ui_guider.h"
-#include "scroll_graph.h"
+#include "drift_graph.h"
 #include "gmath.h"
+#include "guider.h"
 #include "fio.h"
-
 
 class lin_guider;
 namespace io_drv
@@ -44,23 +44,39 @@ class guider : public QDialog
     Q_OBJECT
 
 public:
-    struct drift_view_params_s
-    {
-    	drift_view_params_s() :
-    		drift_graph_xrange( -1 ),
-    		drift_graph_yrange( -1 )
-    	{}
-    	int drift_graph_xrange;
-    	int drift_graph_yrange;
-    };
+	typedef enum
+	{
+        GRAPH_SCROLL = 0,
+        GRAPH_TARGET_POINTS,
+        GRAPH_TARGET_LINES,
+        GRPAH_MAX
+	} graph_type_t;
 
-    guider( lin_guider *parent, io_drv::cio_driver_base *drv, struct guider::drift_view_params_s *dv_params, const common_params &comm_params );
-    ~guider();
+	struct drift_view_params_s
+	{
+		drift_view_params_s() :
+			graph_type (GRAPH_SCROLL),
+			drift_graph_xrange( -1 ),
+			drift_graph_yrange( -1 ),
+			cell_nx( 6 ),
+			cell_ny( 6 )
+		{}
+		graph_type_t graph_type;
+		int drift_graph_xrange;
+		int drift_graph_yrange;
+		int cell_nx;
+		int cell_ny;
+	};
+	static const int cell_size = 50;
 
-    void guide( void );
-    void set_half_refresh_rate( bool is_half );
-    bool is_guiding( void ) const;
-    void set_math( cgmath *math );
+	guider( lin_guider *parent, io_drv::cio_driver_base *drv, struct guider::drift_view_params_s *dv_params, const common_params &comm_params );
+	~guider();
+
+	void initialize_graph( void );
+	void guide( void );
+	void set_half_refresh_rate( bool is_half );
+	bool is_guiding( void ) const;
+	void set_math( lg_math::cgmath *math );
 
 protected slots:
 	void onXscaleChanged( int i );
@@ -68,6 +84,7 @@ protected slots:
 	void onSquareSizeChanged( int index );
 	void onThresholdChanged( int i );
 	void onSwapDEC( int state );
+	void onNormalizeGain( int state );
 	void onSaveLog( int state );
 	void onFileNameChanged();
 	void onQualityControlChanged( int index );
@@ -88,10 +105,10 @@ protected:
 	void hideEvent ( QHideEvent * event );
 
 private:
-	cgmath *m_math;
+	lg_math::cgmath *m_math;
 
 	custom_drawer *m_drift_out;
-	cscroll_graph *m_drift_graph;
+	cdrift_graph *m_drift_graph;
 	fio	*m_logger;
 	bool is_started;
 	bool half_refresh_rate;
@@ -100,12 +117,19 @@ private:
 	int  guiding_stable;
 
 	void fill_interface( void );
+	void update_gains( void );
 	void check_for_events( void );
+	void update_status( enum lg_math::cgmath::status_level level, const std::string &txt );
 
 	lin_guider *pmain_wnd;
 	io_drv::cio_driver_base *m_driver;
 	struct guider::drift_view_params_s *m_drift_view_params;
 	const common_params &m_common_params;
+
+	graph_type_t m_prev_graph_type;
+
+	unsigned int m_status_key;
+
 private:
     Ui::guiderClass ui;
 };

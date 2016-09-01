@@ -59,12 +59,14 @@ private:
 	virtual int stop_capturing( void );		// stop stream
 	virtual int read_frame( void );			// read frame
 	virtual int set_format( void );
+	unsigned int get_pix_fmt( void );
 
 	// local
 	virtual int enum_controls( void );
 
 	ctimer exp_timer;
 	long m_expstart;
+	bool m_do_debayer;
 };
 
 }

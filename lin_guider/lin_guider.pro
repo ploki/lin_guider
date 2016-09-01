@@ -8,7 +8,13 @@ OBJECTS_DIR = $$DSTDIR/.obj
 MOC_DIR = $$DSTDIR/.moc
 UI_DIR = $$DSTDIR/.ui
 RCC_DIR = $$DSTDIR/.rcc
-HEADERS += include/io_dev/io_nexstar.h \
+HEADERS += include/drift_graph.h \
+    include/target_graph.h \
+    include/math/gmath_donuts.h \
+    include/math/donuts_guide.h \
+    include/math/guider_math.h \
+    include/io_dev/io_nexstar.h \
+    include/io_dev/io_skywatcher.h \
     include/io_dev/io_qhy5ii.h \
     include/video_dev/qhy5ii_core.h \
     include/video_dev/video_qhy5ii.h \
@@ -65,7 +71,13 @@ HEADERS += include/io_dev/io_nexstar.h \
     include/utils.h \
     include/io_driver.h \
     include/lin_guider.h
-SOURCES += src/io_dev/io_nexstar.cpp \
+SOURCES += src/drift_graph.cpp \
+    src/target_graph.cpp \
+    src/math/gmath_donuts.cpp \
+    src/math/donuts_guide.cpp \
+    src/math/guider_math.cpp \
+    src/io_dev/io_nexstar.cpp \
+    src/io_dev/io_skywatcher.cpp \
     src/io_dev/io_qhy5ii.cpp \
     src/io_dev/io_atik.cpp \
     src/io_dev/io_sx.cpp \
@@ -132,6 +144,7 @@ RESOURCES += rc/lin_guider.qrc
 INCLUDEPATH += include/ \
     include/io_dev/ \
     include/video_dev/ \
+    include/math/ \
     ./
 LIBS += -lusb-1.0 \
     -ldl \

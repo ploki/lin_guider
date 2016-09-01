@@ -27,6 +27,7 @@
 #include "ui_settings.h"
 #include "server.h"
 #include "common.h"
+#include "guider.h"
 
 
 class lin_guider;
@@ -34,16 +35,19 @@ struct uiparams_s;
 
 class settings : public QDialog
 {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-    settings( lin_guider *parent,
-    		net_params_t *net_params,
-    		common_params * comm_params,
-    		struct uiparams_s * ui_params );
-    virtual ~settings();
+	settings( lin_guider *parent,
+			net_params_t *net_params,
+			common_params * comm_params,
+			struct uiparams_s * ui_params,
+			guider::drift_view_params_s *dv_params );
+	virtual ~settings();
+
 
 protected slots:
+	void onGuiderAlgorithmChanged( int idx );
 
 	void onOkButtonClick();
 	void onCancelButtonClick();
@@ -54,16 +58,18 @@ protected:
 	void hideEvent ( QHideEvent * event );
 
 private:
-    void fill_interface( void );
+	void fill_interface( void );
 
-    net_params_t m_net_params;
-    common_params m_common_params;
+	net_params_t m_net_params;
+	common_params m_common_params;
 
-    net_params_t *m_pnet_params;
-    common_params * const m_pcommon_params;
-    struct uiparams_s *m_ui_params;
+	net_params_t *m_pnet_params;
+	common_params * const m_pcommon_params;
+	struct uiparams_s *m_ui_params;
+	guider::drift_view_params_s *m_drift_view_params;
+
 private:
-    Ui::settingsClass ui;
+	Ui::settingsClass ui;
 };
 
 #endif // SETTINGS_H

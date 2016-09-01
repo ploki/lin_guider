@@ -29,13 +29,12 @@
 #include "utils.h"
 
 
-
 setup_video::setup_video(lin_guider *parent)
     : QDialog(parent), pmain_wnd(parent)
 {
 	ui.setupUi(this);
 
-	setWindowTitle( tr("Video Settings") );
+	setWindowTitle( tr("Camera Settings") );
 
 	// init device list
 	ui.comboBox_DeviceList->clear();
@@ -96,7 +95,6 @@ setup_video::setup_video(lin_guider *parent)
 
 setup_video::~setup_video()
 {
-
 }
 
 

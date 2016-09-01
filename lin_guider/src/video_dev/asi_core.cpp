@@ -33,19 +33,22 @@
 int asi_core::m_ref_count = 0;
 pthread_mutex_t asi_core::m_mutex = PTHREAD_MUTEX_INITIALIZER;
 int asi_core::m_camera = -1;
-ASI_CAMERA_INFO asi_core::m_cam_info = {{0},0,0,0,ASI_FALSE,ASI_BAYER_RG,{0},{ASI_IMG_END},0,ASI_FALSE,ASI_FALSE,ASI_FALSE,ASI_FALSE,{0}};
+ASI_CAMERA_INFO asi_core::m_cam_info = {{0},0,0,0,ASI_FALSE,ASI_BAYER_RG,{0},{ASI_IMG_END},0,ASI_FALSE,ASI_FALSE,ASI_FALSE,ASI_FALSE,ASI_FALSE,0,{0}};
 ASI_CONTROL_CAPS asi_core::m_expo_caps = {{0},{0},0,0,0,ASI_FALSE,ASI_FALSE,ASI_GAIN,{0}};
 bool asi_core::m_has_expo = false;
 ASI_CONTROL_CAPS asi_core::m_gain_caps = {{0},{0},0,0,0,ASI_FALSE,ASI_FALSE,ASI_GAIN,{0}};
 bool asi_core::m_has_gain = false;
 ASI_CONTROL_CAPS asi_core::m_bwidth_caps = {{0},{0},0,0,0,ASI_FALSE,ASI_FALSE,ASI_GAIN,{0}};
 bool asi_core::m_has_bwidth = false;
+ASI_CONTROL_CAPS asi_core::m_wb_r_caps = {{0},{0},0,0,0,ASI_FALSE,ASI_FALSE,ASI_GAIN,{0}};
+bool asi_core::m_has_wb_r = false;
+ASI_CONTROL_CAPS asi_core::m_wb_b_caps = {{0},{0},0,0,0,ASI_FALSE,ASI_FALSE,ASI_GAIN,{0}};
+bool asi_core::m_has_wb_b = false;
 int asi_core::m_width = 0;
 int asi_core::m_height = 0;
 int asi_core::m_binX = 1;
 int asi_core::m_binY = 1;
-int asi_core::m_bandwidth = 0;
-bool asi_core::m_clear_buffs = false;
+bool asi_core::m_clear_buffs = true;
 unsigned char asi_core::m_bpp = 0;
 ASI_IMG_TYPE asi_core::m_img_type = ASI_IMG_END;
 
@@ -129,12 +132,18 @@ int asi_core::open( void )
 				m_bwidth_caps = ctrl_caps;
 				m_has_bwidth = true;
 				break;
+			case ASI_WB_R:
+				m_wb_r_caps = ctrl_caps;
+				m_has_wb_r = true;
+				break;
+			case ASI_WB_B:
+				m_wb_b_caps = ctrl_caps;
+				m_has_wb_b = true;
+				break;
 			default:
 				break;
 			}
 		}
-
-		get_camera_image_type();
 	}
 
 	m_ref_count++;
@@ -143,11 +152,28 @@ int asi_core::open( void )
 	return EXIT_SUCCESS;
 }
 
-void asi_core::get_camera_image_type() {
+void asi_core::set_camera_image_type(ASI_IMG_TYPE img_type) {
 	int x,y,d;
-	pASIGetROIFormat(m_camera, &x, &y,  &d, &m_img_type);
-	//m_img_type = ASI_IMG_RAW16;
-	//ASISetROIFormat(m_camera, x,y,d, m_img_type);
+	int rc = pASIGetROIFormat(m_camera, &x, &y, &d, &m_img_type);
+	if(rc) {
+		log_e("ASIGetROIFormat(): returned error %d", rc);
+		return;
+	}
+	m_img_type = img_type;
+	rc = pASISetROIFormat(m_camera, x, y, d, m_img_type);
+	if(rc) {
+		log_e("ASIGetROIFormat(): returned error %d", rc);
+		return;
+	}
+}
+
+void asi_core::update_camera_image_type() {
+	int x,y,d;
+	int rc = pASIGetROIFormat(m_camera, &x, &y, &d, &m_img_type);
+	if(rc) {
+		log_e("ASIGetROIFormat(): returned error %d", rc);
+		return;
+	}
 	switch (m_img_type) {
 	case ASI_IMG_RAW8:
 	case ASI_IMG_Y8:
@@ -343,6 +369,7 @@ bool asi_core::close_sdk() {
 bool asi_core::start_exposure() {
 	int rc;
 
+	usleep(150); // avoid broken frames
 	pthread_mutex_lock( &m_mutex );
 	rc = pASIStartVideoCapture(m_camera);
 	pthread_mutex_unlock( &m_mutex );
@@ -356,16 +383,22 @@ bool asi_core::abort_exposure() {
 	rc = pASIStopVideoCapture(m_camera);
 	pthread_mutex_unlock( &m_mutex );
 	if(rc) return false;
+	usleep(150); // aovid broken frames
     return true;
 }
 
 bool asi_core::set_camera_exposure(long exp_time) {
 	if (!m_has_expo) return false;
+
+	if( DBG_VERBOSITY )
+		log_i( "Set exposure %d ms", exp_time);
+
 	exp_time *= 1000; //convert to us
 	if((exp_time < m_expo_caps.MinValue) || (exp_time > m_expo_caps.MaxValue)) {
 		log_e("Exposure time %d not supported", exp_time);
 		return false;
 	}
+
 	pthread_mutex_lock( &m_mutex );
 	int rc = pASISetControlValue(m_camera, m_expo_caps.ControlType, exp_time, ASI_FALSE);
 	pthread_mutex_unlock( &m_mutex );
@@ -373,12 +406,13 @@ bool asi_core::set_camera_exposure(long exp_time) {
 		log_e("ASISetControlValue(expossure): returned error %d", rc);
 		return false;
 	}
+
     return true;
 }
 
-bool asi_core::set_camera_gain(unsigned char gain) {
+bool asi_core::set_camera_gain(unsigned int gain) {
 	if (!m_has_gain) return false;
-	if((gain < m_gain_caps.MinValue) || (gain > m_gain_caps.MaxValue)) {
+	if(((int)gain < m_gain_caps.MinValue) || ((int)gain > m_gain_caps.MaxValue)) {
 		log_e("Gain %d not supported", gain);
 		return false;
 	}
@@ -406,6 +440,38 @@ bool asi_core::set_band_width(unsigned char bwidth) {
 		return false;
 	}
     return true;
+}
+
+bool asi_core::set_wb_r(unsigned char wb_r) {
+	if (!m_has_wb_r) return false;
+	if((wb_r < m_wb_r_caps.MinValue) || (wb_r > m_wb_r_caps.MaxValue)) {
+		log_e("WB Red value %d not supported", wb_r);
+		return false;
+	}
+	pthread_mutex_lock( &m_mutex );
+	int rc = pASISetControlValue(m_camera, m_wb_r_caps.ControlType, wb_r, ASI_FALSE);
+	pthread_mutex_unlock( &m_mutex );
+	if(rc) {
+		log_e("ASISetControlValue(WB_R): returned error %d", rc);
+		return false;
+	}
+	return true;
+}
+
+bool asi_core::set_wb_b(unsigned char wb_b) {
+	if (!m_has_wb_b) return false;
+	if((wb_b < m_wb_b_caps.MinValue) || (wb_b > m_wb_b_caps.MaxValue)) {
+		log_e("WB Blue value %d not supported", wb_b);
+		return false;
+	}
+	pthread_mutex_lock( &m_mutex );
+	int rc = pASISetControlValue(m_camera, m_wb_b_caps.ControlType, wb_b, ASI_FALSE);
+	pthread_mutex_unlock( &m_mutex );
+	if(rc) {
+		log_e("ASISetControlValue(WB_B): returned error %d", rc);
+		return false;
+	}
+	return true;
 }
 
 bool asi_core::read_image(char *buf, int buf_size, long exp_time) {

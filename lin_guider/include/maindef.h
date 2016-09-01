@@ -25,8 +25,8 @@
 
 #include <sys/types.h>
 
-#define VERSION "3.1.0"
-#define CPY_RIGHT(ver) "Lin-guider v" ver " (c)GM software'08-15"
+#define VERSION "4.0.0"
+#define CPY_RIGHT(ver) "Lin-guider v" ver " (c)GM software'08-16"
 
 typedef struct
 {
@@ -40,6 +40,7 @@ extern const u_char DEF_GRID_COLOR[];
 extern const u_char DEF_WHITE_COLOR[];
 extern const u_char DEF_GRID_FONT_COLOR[];
 extern const u_char DEF_RET_ORG_COLOR[];
+extern const u_char DEF_OSF_COLOR[];
 
 extern const u_char DEF_SQR_OVL_COLOR[];
 

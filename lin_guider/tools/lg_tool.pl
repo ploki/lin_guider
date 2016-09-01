@@ -23,7 +23,7 @@ use Getopt::Std;
 use IO::Socket;
 use File::Basename;
 
-my $VERSION = "0.1";
+my $VERSION = "0.3";
 my $verbose = 0;
 
 my %command_val = (
@@ -32,7 +32,8 @@ my %command_val = (
 	'SAVE_FRAME' => 3,
 	'DITHER' => 4,
 	'DITHER_NO_WAIT_XY' => 5,
-	'GET_DISTANCE' => 6
+	'GET_DISTANCE' => 6,
+	'SAVE_FRAME_DECORATED' => 7
 );
 my %command_name = reverse %command_val;
 
@@ -53,6 +54,8 @@ sub print_help() {
 	      "       $N dither_no_wait [-v] rX rY\n".
 	      "       $N get_distance [-v]\n".
 	      "       $N set_square_pos [-v] X Y\n".
+	      "       $N save_frame [-v] filename\n".
+	      "       $N save_frame_decorated [-v] filename\n".
 	      "options:\n".
 	      "       -v verbose output\n".
 	      "       -h print this help\n\n".
@@ -237,6 +240,38 @@ sub set_square_pos {
 	}
 }
 
+sub save_frame {
+	my @params = @_;
+	if ($#params != 0) {
+		print STDERR "save_frame: Wrong parameters.\n";
+		return undef;
+	}
+	my $paramstr = sprintf("%s", $params[0]);
+	my ($resp,$cmd) = lg_chat($command_val{SAVE_FRAME}, $paramstr);
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^SAVED/) {
+		return 1;
+	} else {
+		return undef;
+	}
+}
+
+sub save_frame_decorated {
+	my @params = @_;
+	if ($#params != 0) {
+		print STDERR "save_frame_decorated: Wrong parameters.\n";
+		return undef;
+	}
+	my $paramstr = sprintf("%s", $params[0]);
+	my ($resp,$cmd) = lg_chat($command_val{SAVE_FRAME_DECORATED}, $paramstr);
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^SAVED/) {
+		return 1;
+	} else {
+		return undef;
+	}
+}
+
 
 # main routine
 sub main {
@@ -305,6 +340,22 @@ sub main {
 			exit 1;
 		}
 		$verbose && print "SET_GUIDER_SQUARE_POS succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "save_frame") {
+		if (! save_frame(@ARGV)) {
+			$verbose && print STDERR "SAVE_FRAME returned error.\n";
+			exit 1;
+		}
+		$verbose && print "SAVE_FRAME succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "save_frame_decorated") {
+		if (! save_frame_decorated(@ARGV)) {
+			$verbose && print STDERR "SAVE_FRAME_DECORATED returned error.\n";
+			exit 1;
+		}
+		$verbose && print "SAVE_FRAME_DECRATED succeeded.\n";
 		exit 0;
 
 	} elsif ($command eq "-h") {

@@ -110,21 +110,27 @@ int  cvideo_null::get_vcaps( void )
 	pt.x = 320;
 	pt.y = 240;
 	device_formats[0].frame_table[ i ].size =  pt;
-	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 1, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 1, 2 );
-	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 1, 5 );
-	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 1, 10 );
-	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 15 );
+	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 5, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 3, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 2, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 1, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 2 );
+	device_formats[0].frame_table[ i ].fps_table[ 5 ] = time_fract::mk_fps( 1, 5 );
+	device_formats[0].frame_table[ i ].fps_table[ 6 ] = time_fract::mk_fps( 1, 10 );
+	device_formats[0].frame_table[ i ].fps_table[ 7 ] = time_fract::mk_fps( 1, 15 );
 	i++;
 
 	pt.x = 640;
 	pt.y = 480;
 	device_formats[0].frame_table[ i ].size =  pt;
-	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 1, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 1, 2 );
-	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 1, 5 );
-	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 1, 10 );
-	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 15 );
+	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 5, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 3, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 2, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 1, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 2 );
+	device_formats[0].frame_table[ i ].fps_table[ 5 ] = time_fract::mk_fps( 1, 5 );
+	device_formats[0].frame_table[ i ].fps_table[ 6 ] = time_fract::mk_fps( 1, 10 );
+	device_formats[0].frame_table[ i ].fps_table[ 7 ] = time_fract::mk_fps( 1, 15 );
 	i++;
 
 	// add empty tail
@@ -331,6 +337,8 @@ int cvideo_null::read_frame( void )
 	generate_emu_stars();
 
 	//filters::medianfilter( (uint8_t*)raw.ptr8, (uint8_t*)NULL, capture_params.width, capture_params.height );
+	//filters::medianfilter( (uint16_t*)raw.ptr16, (uint16_t*)NULL, capture_params.width, capture_params.height );
+	//filters::medianfilter( (uint16_t*)raw.ptr16, (uint16_t*)NULL, capture_params.width, capture_params.height );
 
 	if( 0 && DBG_VERBOSITY )
 		log_i( "Downloading finished. Read: %d bytes", buffers[0].length);
@@ -505,7 +513,7 @@ void cvideo_null::generate_emu_field( void )
 	data_ptr raw = buffers[0].start;
 	for( size_t i = 0;i < buffers[0].length;i++ )
 	{
-		raw.ptr16[i] = (32+rand()%25)*256;
+		raw.ptr16[i] = (32+rand()%(capture_params.gain+1))*256;
 		//raw.ptr16[i] = 32*256 + rand()%100;
 	}
 }

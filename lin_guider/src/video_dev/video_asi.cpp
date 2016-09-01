@@ -31,23 +31,10 @@
 #include "timer.h"
 #include "utils.h"
 #include "filters.h"
-
-
-// TODO: replace it with ctimer class
-/*
-long time_diff(struct timeval *start, struct timeval *end) {
-	long msec;
-
-	msec = (end->tv_sec - start->tv_sec) * 1000;
-	msec += (end->tv_usec - start->tv_usec) / 1000;
-
-	return msec;
-}
-*/
+#include "bayer.h"
 
 namespace video_drv
 {
-
 
 cvideo_asi::cvideo_asi()
 {
@@ -84,7 +71,9 @@ time_fract_t cvideo_asi::set_fps( const time_fract &new_fps )
 
 	capture_params.fps = set_fps;
 	frame_delay = time_fract::to_msecs( capture_params.fps );
+	abort_exposure();
 	set_camera_exposure(frame_delay);
+	start_exposure();
 
 	if( initialized )
 		pthread_mutex_unlock( &cv_mutex );
@@ -95,7 +84,41 @@ time_fract_t cvideo_asi::set_fps( const time_fract &new_fps )
 
 int cvideo_asi::open_device( void )
 {
-	return open();
+
+	int result = open();
+	if (result) return result;
+
+	// Default Values
+	m_transfer_bits = 8;
+	m_bandwidth = m_has_bwidth ? m_bwidth_caps.DefaultValue : 0;
+	m_clear_buffs =1;
+	m_wb_r = m_has_wb_r ? m_wb_r_caps.DefaultValue : 0;
+	m_wb_b = m_has_wb_b ? m_wb_b_caps.DefaultValue : 0;
+	m_force_bw = 0;
+	m_clear_buffs = 1;
+
+	capture_params.ext_params.insert( std::make_pair( V4L2_CID_USER_ASI8BIT, m_transfer_bits == 8 ? 1 : 0 ) );
+	m_transfer_bits = capture_params.ext_params[ V4L2_CID_USER_ASI8BIT ] == 0 ? 16 : 8;
+	capture_params.ext_params.insert( std::make_pair( V4L2_CID_USER_BANDWIDTH, m_bandwidth ) );
+	m_bandwidth = capture_params.ext_params[ V4L2_CID_USER_BANDWIDTH ];
+	capture_params.ext_params.insert( std::make_pair( V4L2_CID_RED_BALANCE, m_wb_r ) );
+	m_wb_r = capture_params.ext_params[ V4L2_CID_RED_BALANCE ];
+	capture_params.ext_params.insert( std::make_pair( V4L2_CID_BLUE_BALANCE, m_wb_b ) );
+	m_wb_b = capture_params.ext_params[ V4L2_CID_BLUE_BALANCE ];
+	capture_params.ext_params.insert( std::make_pair( V4L2_CID_USER_CLEAR_BUFFS, m_clear_buffs ) );
+	m_clear_buffs = capture_params.ext_params[ V4L2_CID_USER_CLEAR_BUFFS ];
+	capture_params.ext_params.insert( std::make_pair( V4L2_CID_USER_FORCE_BW, m_force_bw ) );
+	m_force_bw = capture_params.ext_params[ V4L2_CID_USER_FORCE_BW ];
+
+	if (m_transfer_bits == 8) {
+		if (m_force_bw) set_camera_image_type(ASI_IMG_Y8);
+		else set_camera_image_type(ASI_IMG_RAW8);
+	} else set_camera_image_type(ASI_IMG_RAW16);
+	update_camera_image_type();
+
+	capture_params.pixel_format = get_pix_fmt();
+
+	return EXIT_SUCCESS;
 }
 
 
@@ -110,39 +133,38 @@ int  cvideo_asi::get_vcaps( void )
 	int i = 0;
 	point_t pt;
 
-	if (m_bpp == 16)
-		device_formats[0].format = V4L2_PIX_FMT_Y16;
-	else if (m_bpp == 8)
-		device_formats[0].format = V4L2_PIX_FMT_GREY;
-	else
-		return 1;
+	device_formats[0].format = get_pix_fmt();
 
 	pt.x = m_cam_info.MaxWidth;
 	pt.y = m_cam_info.MaxHeight;
 	device_formats[0].frame_table[ i ].size =  pt;
-	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 5, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 3, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 2, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 1, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 2 );
-	device_formats[0].frame_table[ i ].fps_table[ 5 ] = time_fract::mk_fps( 1, 3 );
-	device_formats[0].frame_table[ i ].fps_table[ 6 ] = time_fract::mk_fps( 1, 5 );
-	device_formats[0].frame_table[ i ].fps_table[ 7 ] = time_fract::mk_fps( 1, 10 );
-	device_formats[0].frame_table[ i ].fps_table[ 8 ] = time_fract::mk_fps( 1, 20 );
+	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 10, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 5, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 3, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 2, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 5 ] = time_fract::mk_fps( 1, 2 );
+	device_formats[0].frame_table[ i ].fps_table[ 6 ] = time_fract::mk_fps( 1, 3 );
+	device_formats[0].frame_table[ i ].fps_table[ 7 ] = time_fract::mk_fps( 1, 5 );
+	device_formats[0].frame_table[ i ].fps_table[ 8 ] = time_fract::mk_fps( 1, 10 );
+	device_formats[0].frame_table[ i ].fps_table[ 9 ] = time_fract::mk_fps( 1, 20 );
+	device_formats[0].frame_table[ i ].fps_table[ 10 ] = time_fract::mk_fps( 1, 30 );
 	i++;
 
 	pt.x = m_cam_info.MaxWidth/2;
 	pt.y = m_cam_info.MaxHeight/2;
 	device_formats[0].frame_table[ i ].size =  pt;
-	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 5, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 3, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 2, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 1, 1 );
-	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 2 );
-	device_formats[0].frame_table[ i ].fps_table[ 5 ] = time_fract::mk_fps( 1, 3 );
-	device_formats[0].frame_table[ i ].fps_table[ 6 ] = time_fract::mk_fps( 1, 5 );
-	device_formats[0].frame_table[ i ].fps_table[ 7 ] = time_fract::mk_fps( 1, 10 );
-	device_formats[0].frame_table[ i ].fps_table[ 8 ] = time_fract::mk_fps( 1, 20 );
+	device_formats[0].frame_table[ i ].fps_table[ 0 ] = time_fract::mk_fps( 10, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 1 ] = time_fract::mk_fps( 5, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 2 ] = time_fract::mk_fps( 3, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 3 ] = time_fract::mk_fps( 2, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 4 ] = time_fract::mk_fps( 1, 1 );
+	device_formats[0].frame_table[ i ].fps_table[ 5 ] = time_fract::mk_fps( 1, 2 );
+	device_formats[0].frame_table[ i ].fps_table[ 6 ] = time_fract::mk_fps( 1, 3 );
+	device_formats[0].frame_table[ i ].fps_table[ 7 ] = time_fract::mk_fps( 1, 5 );
+	device_formats[0].frame_table[ i ].fps_table[ 8 ] = time_fract::mk_fps( 1, 10 );
+	device_formats[0].frame_table[ i ].fps_table[ 9 ] = time_fract::mk_fps( 1, 20 );
+	device_formats[0].frame_table[ i ].fps_table[ 10 ] = time_fract::mk_fps( 1, 30 );
 	i++;
 
 	// add empty tail
@@ -174,18 +196,17 @@ int  cvideo_asi::set_control( unsigned int control_id, const param_val_t &val )
 		break;
 	}
 	case V4L2_CID_EXPOSURE: {
-		long wp_max = 255;
+		long wp_max = 256;
 		if(m_bpp == 16) wp_max = 65535;
 		int v = val.values[0];
 		if( v < 0 ) v = 0;
 		if( v > wp_max ) v = wp_max;
 		int top = wp_max - v;
 		if( top <= 0 ) {
-			log_e( "cvideo_sx::set_control(): invalid exposure" );
+			log_e( "cvideo_asi::set_control(): invalid exposure" );
 			return -1;
 		}
 		init_lut_to8bit( top );
-
 		capture_params.exposure = v;
 		break;
 	}
@@ -202,6 +223,32 @@ int  cvideo_asi::set_control( unsigned int control_id, const param_val_t &val )
 			log_i( "USB Bandwidth = %d", m_bandwidth);
 		break;
 	}
+	case V4L2_CID_RED_BALANCE:
+	{
+		//log_e( "USB Bandwidth = %d", m_bandwidth);
+		int v = val.values[0];
+		if( v < m_wb_r_caps.MinValue ) v = m_wb_r_caps.MinValue;
+		if( v > m_wb_r_caps.MaxValue-10 ) v = m_wb_r_caps.MaxValue-10;
+		capture_params.ext_params[ control_id ] = v;
+		m_wb_r = v;
+		set_wb_r(m_wb_r);
+		if (DBG_VERBOSITY)
+			log_i( "WB_R = %d", m_wb_r);
+		break;
+	}
+	case V4L2_CID_BLUE_BALANCE:
+	{
+		//log_e( "USB Bandwidth = %d", m_bandwidth);
+		int v = val.values[0];
+		if( v < m_wb_b_caps.MinValue ) v = m_wb_b_caps.MinValue;
+		if( v > m_wb_b_caps.MaxValue-10 ) v = m_wb_b_caps.MaxValue-10;
+		capture_params.ext_params[ control_id ] = v;
+		m_wb_b = v;
+		set_wb_b(m_wb_b);
+		if (DBG_VERBOSITY)
+			log_i( "WB_B = %d", m_wb_b);
+		break;
+	}
 	case V4L2_CID_USER_CLEAR_BUFFS:
 	{
 		int v = val.values[0];
@@ -213,6 +260,29 @@ int  cvideo_asi::set_control( unsigned int control_id, const param_val_t &val )
 		m_clear_buffs = v;
 		if (DBG_VERBOSITY)
 			log_i( "Clear buffs: %d", v );
+		break;
+	}
+	case V4L2_CID_USER_FORCE_BW:
+	{
+		int v = val.values[0];
+		v = v < 0 ? 0 : v;
+		v = v > 1 ? 1 : v;
+		capture_params.ext_params[ control_id ] = v;
+		m_force_bw = (v == 1);
+		if (m_transfer_bits == 8) {
+			if (m_force_bw) set_camera_image_type(ASI_IMG_Y8);
+			else set_camera_image_type(ASI_IMG_RAW8);
+		} else set_camera_image_type(ASI_IMG_RAW16);
+		capture_params.pixel_format = get_pix_fmt();
+		log_i( "Forced BW mode is %s", m_force_bw ? "ON" : "OFF" );
+		break;
+	}
+	case V4L2_CID_USER_ASI8BIT:
+	{
+		capture_params.ext_params[ control_id ] = val.values[0];
+		log_i( "Ctrl 8-bit: %d, (restart is required)", val.values[0] );
+		if( val.values[0] == 0 ) // mode 12-bit
+			log_i( "NOTE: On some camera models 12-bit video mode disables guider port!" );
 		break;
 	}
 	default:
@@ -245,17 +315,12 @@ int cvideo_asi::init_device( void )
 	int sizeimage = 0;
 	ASI_ERROR_CODE result;
 
+	set_fps( capture_params.fps );
+
 	// set desired size
 	sizeimage = set_format();
 	if( sizeimage <= 0 )
 		return EXIT_FAILURE;
-
-	set_fps( capture_params.fps );
-
-	capture_params.ext_params.insert( std::make_pair( V4L2_CID_USER_BANDWIDTH, m_bandwidth ) );
-	m_bandwidth = capture_params.ext_params[ V4L2_CID_USER_BANDWIDTH ];
-	capture_params.ext_params.insert( std::make_pair( V4L2_CID_USER_CLEAR_BUFFS, m_clear_buffs ) );
-	m_clear_buffs = capture_params.ext_params[ V4L2_CID_USER_CLEAR_BUFFS ];
 
 	n_buffers = 1;
 	buffers = (buffer *)calloc( n_buffers, sizeof(*buffers) );
@@ -314,9 +379,11 @@ int cvideo_asi::init_device( void )
 		log_e("ASISetROIFormat() returned %d", result);
 		return EXIT_FAILURE;
 	}
-	set_camera_exposure(100); // set short exposure as if you start with a long one it is always ~1s (wired)
+
 	set_camera_gain(capture_params.gain);
 	set_band_width(m_bandwidth);
+	set_wb_r(m_wb_r);
+	set_wb_b(m_wb_b);
 
 	return 0;
 }
@@ -405,18 +472,51 @@ int cvideo_asi::read_frame( void )
 	return 0;
 }
 
+unsigned int cvideo_asi::get_pix_fmt( void ) {
+	if (m_bpp == 16) {
+		if (m_cam_info.IsColorCam) {
+			switch (m_cam_info.BayerPattern) {
+			case ASI_BAYER_RG:
+				return V4L2_PIX_FMT_SRGGB12;
+			case ASI_BAYER_BG:
+				return V4L2_PIX_FMT_SBGGR12;
+			case ASI_BAYER_GR:
+				return V4L2_PIX_FMT_SGRBG12;
+			case ASI_BAYER_GB:
+				return V4L2_PIX_FMT_SGBRG12;
+			default:
+				return V4L2_PIX_FMT_Y16;
+			}
+		} else {
+			return V4L2_PIX_FMT_Y16;
+		}
+	} else if (m_bpp == 8) {
+		if (m_cam_info.IsColorCam) {
+			switch (m_cam_info.BayerPattern) {
+			case ASI_BAYER_RG:
+				return PIX_FMT_SRGGB8;
+			case ASI_BAYER_BG:
+				return PIX_FMT_SBGGR8;
+			case ASI_BAYER_GR:
+				return PIX_FMT_SGRBG8;
+			case ASI_BAYER_GB:
+				return PIX_FMT_SGBRG8;
+			default:
+				return V4L2_PIX_FMT_GREY;
+			}
+		} else {
+			return V4L2_PIX_FMT_GREY;
+		}
+	} else return 0;
+}
 
 int cvideo_asi::set_format( void )
 {
 	int i, j;
 	point_t pt = {0, 0};
 
-	if (m_bpp == 16)
-		capture_params.pixel_format = V4L2_PIX_FMT_Y16;
-	else if (m_bpp == 8)
-		capture_params.pixel_format = V4L2_PIX_FMT_GREY;
-	else
-		return 0;
+	device_formats[0].format = get_pix_fmt();
+	capture_params.pixel_format = device_formats[0].format;
 
 	for( i = 0; i < MAX_FMT && device_formats[i].format;i++ ) {
 		if( device_formats[i].format != capture_params.pixel_format )
@@ -482,9 +582,37 @@ int cvideo_asi::enum_controls( void )
 		queryctrl.type = V4L2_CTRL_TYPE_INTEGER;
 		snprintf( (char*)queryctrl.name, sizeof(queryctrl.name)-1, "USB Bandwidth" );
 		queryctrl.minimum = m_bwidth_caps.MinValue;
-		queryctrl.maximum = m_bwidth_caps.MaxValue-10;
+		queryctrl.maximum = m_bwidth_caps.MaxValue-5;
 		queryctrl.step = 1;
-		queryctrl.default_value = 50;//s m_bwidth_caps.DefaultValue;
+		queryctrl.default_value = m_bandwidth;
+		queryctrl.flags = 0;
+		// Add control to control list
+		controls = add_control( -1, &queryctrl, controls, &n, true );
+	}
+
+	if(m_has_wb_r) {
+		// create virtual control (extended ctl)
+		queryctrl.id = V4L2_CID_RED_BALANCE;
+		queryctrl.type = V4L2_CTRL_TYPE_INTEGER;
+		snprintf( (char*)queryctrl.name, sizeof(queryctrl.name)-1, "White Balance R" );
+		queryctrl.minimum = m_wb_r_caps.MinValue;
+		queryctrl.maximum = m_wb_r_caps.MaxValue;
+		queryctrl.step = 1;
+		queryctrl.default_value = m_wb_r;
+		queryctrl.flags = 0;
+		// Add control to control list
+		controls = add_control( -1, &queryctrl, controls, &n, true );
+	}
+
+	if(m_has_wb_b) {
+		// create virtual control (extended ctl)
+		queryctrl.id = V4L2_CID_BLUE_BALANCE;
+		queryctrl.type = V4L2_CTRL_TYPE_INTEGER;
+		snprintf( (char*)queryctrl.name, sizeof(queryctrl.name)-1, "White Balance B" );
+		queryctrl.minimum = m_wb_b_caps.MinValue;
+		queryctrl.maximum = m_wb_b_caps.MaxValue;
+		queryctrl.step = 1;
+		queryctrl.default_value = m_wb_b;
 		queryctrl.flags = 0;
 		// Add control to control list
 		controls = add_control( -1, &queryctrl, controls, &n, true );
@@ -497,7 +625,33 @@ int cvideo_asi::enum_controls( void )
 	queryctrl.minimum = 0;
 	queryctrl.maximum = 1;
 	queryctrl.step = 1;
-	queryctrl.default_value = 0;
+	queryctrl.default_value = m_clear_buffs;
+	queryctrl.flags = 0;
+	// Add control to control list
+	controls = add_control( -1, &queryctrl, controls, &n, true );
+
+	if (m_transfer_bits == 8) { // Force SDK to render BW frames (abailable in 8 bits only)
+		// create virtual control
+		queryctrl.id = V4L2_CID_USER_FORCE_BW;
+		queryctrl.type = V4L2_CTRL_TYPE_BOOLEAN;
+		snprintf( (char*)queryctrl.name, sizeof(queryctrl.name)-1, "Force BW frames" );
+		queryctrl.minimum = 0;
+		queryctrl.maximum = 1;
+		queryctrl.step = 1;
+		queryctrl.default_value = m_force_bw;
+		queryctrl.flags = 0;
+		// Add control to control list
+		controls = add_control( -1, &queryctrl, controls, &n, true );
+	}
+
+	// create virtual control
+	queryctrl.id = V4L2_CID_USER_ASI8BIT;
+	queryctrl.type = V4L2_CTRL_TYPE_BOOLEAN;
+	snprintf( (char*)queryctrl.name, sizeof(queryctrl.name)-1, "8-bit mode" );
+	queryctrl.minimum = 0;
+	queryctrl.maximum = 1;
+	queryctrl.step = 1;
+	queryctrl.default_value = 1;
 	queryctrl.flags = 0;
 	// Add control to control list
 	controls = add_control( -1, &queryctrl, controls, &n, true );

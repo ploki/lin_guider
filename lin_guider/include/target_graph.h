@@ -1,7 +1,8 @@
 /*
- * main.cpp
+ * target_graph.h
  *
- *      Author: gm
+ *  Created on: 21 Jan 2016.
+ *  Authors: Andrew Stepanenko, Rumen G.Bogdanovski
  *
  * This file is part of Lin_guider.
  *
@@ -19,17 +20,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lin_guider.h"
+#ifndef TARGET_GRAPH_H_
+#define TARGET_GRAPH_H_
 
-#include <QtGui>
-#include <QApplication>
-#include <stdlib.h>
+#include "drift_graph.h"
 
-int main(int argc, char *argv[])
+
+class target_graph : public cdrift_graph
 {
-    setenv("LC_NUMERIC","C",1); /* always use "." for floating point */
-    QApplication a(argc, argv);
-    lin_guider w;
-    w.show();
-    return a.exec();
-}
+public:
+	target_graph( int client_width, int client_height, int cell_nx, int cell_ny, bool use_lines );
+	virtual ~target_graph();
+
+protected:
+	bool m_use_lines;
+	virtual void refresh( void );
+	virtual void draw_grid( void );
+};
+
+#endif /* TARGET_GRAPH_H_ */

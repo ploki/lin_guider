@@ -24,6 +24,9 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+
+#include <string>
+#include <map>
 #include <vector>
 #include <utility>
 
@@ -35,28 +38,50 @@
 
 class common_params;
 
+namespace lg_math
+{
 
-#define FIND_STAR_CLIP_EDGE 48
-#define STAR_CLIP_EDGE 8
+enum guider_algorithm
+{
+	GA_MIN = 0,
+	GA_CENTROID,
+	GA_DONUTS,
+	GA_MAX,
+	ALG_CNT = GA_MAX-1
+};
 
-// smart threshold algorithm param
-// width of outer frame for backgroung calculation
-#define SMART_FRAME_WIDTH	4
-// cut-factor above avarage threshold
-#define SMART_CUT_FACTOR	0.1
+enum capabilities
+{
+	CAP_HFD = 0x1,
+	CAP_QUALITY = 0x2
+};
+
+typedef struct
+{
+	const int type;
+	const bool use_osf_ui;
+	const char *desc;
+	const char *info;	    // any necessary text info
+	const char *hyper_info;	// any necessary hypertext info
+}algorithm_desc_t;
+
+extern algorithm_desc_t alg_desc_list[ALG_CNT];
 
 // core constants
-#define RA	0
-#define DEC	1
-#define SGN_POS  0
-#define SGN_NEG  1
-#define CHANNEL_CNT	2
-#define DEFAULT_SQR	1
-
-#define  MAX_ACCUM_CNT	50
-
-#define DITHER_FIXED_TOUT 2
-#define DITHER_FIXED_TOUT_CLIP 20
+enum axes
+{
+	RA = 0,
+	DEC = 1
+};
+enum signs
+{
+	SGN_POS = 0,
+	SGN_NEG = 1
+};
+static const double STABILITY_LIMIT_FACTOR = 2.0;
+static const double FIND_STAR_CLIP_EDGE = 48;
+static const double STAR_CLIP_EDGE = 8;
+static const int MAX_ACCUM_CNT = 50;
 
 enum dither_err_codes
 {
@@ -91,8 +116,6 @@ enum stability_types
 	STABILITY_BAD
 };
 
-#define STABILITY_LIMIT_FACTOR  2.0
-
 typedef struct
 {
 	int size;
@@ -113,31 +136,48 @@ typedef struct
 
 typedef struct
 {
+	enum consts
+	{
+		OVR_DRAGGABLE_CNT = 3,
+		OVR_ALTERSQUARE_FLAG = 0x80000000
+	};
 	enum type_t // values must be power of 2
 	{
 		OVR_SQUARE = 1,
 		OVR_RETICLE = 2,
-		OVR_RETICLE_ORG = 4
+		OVR_RETICLE_ORG = 4,
+		OVR_OSF = 8,	// optional subframe
+		OVR_ALTERSQUARE = (OVR_SQUARE | OVR_ALTERSQUARE_FLAG)
 	};
 	int visible;
+	int locked;
 	int square_size;
 	point_t square_pos;
 	point_t reticle_axis_ra;
 	point_t reticle_axis_dec;
 	point_t reticle_pos;
 	point_t reticle_org;
+	point_t osf_pos;
+	point_t osf_size;
 }ovr_params_t;
 
 
 // input params
 class cproc_in_params
 {
+	enum consts
+	{
+		CHANNEL_CNT = 2
+	};
+
 public:
 	cproc_in_params();
 	void reset( void );
 
 	int       threshold_alg_idx;
 	double    guiding_rate;
+	double    guiding_normal_coef;
+	bool      normalize_gain;
 	bool      enabled_dir[CHANNEL_CNT];
 	bool      enabled_dir_sign[CHANNEL_CNT][CHANNEL_CNT];
 	bool      average;
@@ -173,9 +213,9 @@ public:
 
 typedef struct
 {
- double focal_ratio;
- double fov_wd, fov_ht;
- double focal, aperture;
+	double focal_ratio;
+	double fov_wd, fov_ht;
+	double focal, aperture;
 }info_params_t;
 
 extern const guide_square_t guide_squares[];
@@ -185,17 +225,33 @@ extern const q_control_t q_control_mtd[];
 
 class cgmath
 {
+	// smart threshold algorithm param
+	// width of outer frame for backgroung calculation
+	static const int SMART_FRAME_WIDTH = 4;
+	// cut-factor above avarage threshold
+	static const double SMART_CUT_FACTOR = 0.1;
+
+	static const int DITHER_FIXED_TOUT = 2;
+	static const int DITHER_FIXED_TOUT_CLIP = 20;
+
 public:
+	enum status_level
+	{
+		STATUS_LEVEL_INFO = 0, // may be of standard color
+		STATUS_LEVEL_WARNING,  // may be orange
+		STATUS_LEVEL_ERROR     // may by red
+	};
+	static const int DEFAULT_SQR = 1;
+
 	cgmath( const common_params &comm_params );
 	virtual ~cgmath();
 	
 	// functions
-	bool set_video_params( int vid_wd, int vid_ht );
-	double *get_data_buffer( int *width, int *height, int *length, int *size );
+	virtual bool set_video_params( int vid_wd, int vid_ht );
+	double *get_data_buffer( int *width, int *height, int *length, int *size ) const;
 	bool set_guider_params( double ccd_pix_wd, double ccd_pix_ht, double guider_aperture, double guider_focal );
 	bool set_reticle_params( double x, double y, double ang );
 	bool get_reticle_params( double *x, double *y, double *ang ) const;
-	int  fix_square_index( int square_index ) const;
 	int  get_square_index( void ) const;
 	int  get_square_algorithm_index( void ) const;
 	void set_square_algorithm_index( int alg_idx );
@@ -209,12 +265,64 @@ public:
 	uint32_t get_ticks( void ) const;
 	void get_star_drift( double *dx, double *dy ) const;
 	void get_star_screen_pos( double *dx, double *dy ) const;
-	int get_distance(double *dx, double *dy) const;
-	bool reset( void );
+	int  get_distance(double *dx, double *dy) const;
+	virtual bool reset( void );
 	
-	ovr_params_t *prepare_overlays( void );
+	virtual ovr_params_t *prepare_overlays( void );
+	virtual int get_default_overlay_set( void ) const;
 	void move_square( double newx, double newy );
 	void resize_square( int size_idx );
+	virtual void move_osf( double newx, double newy )
+	{
+		std::map< std::string, double >::iterator it = m_misc_vars.find( "osf_x" );
+		if( it != m_misc_vars.end() )
+			m_misc_vars.erase( it );
+		m_misc_vars.insert( std::make_pair("osf_x", newx) );
+
+		it = m_misc_vars.find( "osf_y" );
+		if( it != m_misc_vars.end() )
+			m_misc_vars.erase( it );
+		m_misc_vars.insert( std::make_pair("osf_y", newy) );
+	}
+	virtual void resize_osf( double kx, double ky )
+	{
+		std::map< std::string, double >::iterator it = m_misc_vars.find( "osf_kx" );
+		if( it != m_misc_vars.end() )
+			m_misc_vars.erase( it );
+		m_misc_vars.insert( std::make_pair("osf_kx", kx) );
+
+		it = m_misc_vars.find( "osf_ky" );
+		if( it != m_misc_vars.end() )
+			m_misc_vars.erase( it );
+		m_misc_vars.insert( std::make_pair("osf_ky", ky) );
+	}
+	virtual void get_osf_params( double *x, double *y, double *kx, double *ky ) const
+	{
+		if( x )
+		{
+			std::map< std::string, double >::const_iterator it = m_misc_vars.find( "osf_x" );
+			if( it != m_misc_vars.end() )
+				*x = it->second;
+		}
+		if( y )
+		{
+			std::map< std::string, double >::const_iterator it = m_misc_vars.find( "osf_y" );
+			if( it != m_misc_vars.end() )
+				*y = it->second;
+		}
+		if( kx )
+		{
+			std::map< std::string, double >::const_iterator it = m_misc_vars.find( "osf_kx" );
+			if( it != m_misc_vars.end() )
+				*kx = it->second;
+		}
+		if( ky )
+		{
+			std::map< std::string, double >::const_iterator it = m_misc_vars.find( "osf_ky" );
+			if( it != m_misc_vars.end() )
+				*ky = it->second;
+		}
+	}
 	int  dither( void );
 	int  dither_no_wait_xy( double rx, double ry );
 	const char *get_dither_errstring( int err_code ) const;
@@ -224,6 +332,7 @@ public:
 	void stop( void );
 	void suspend( bool mode );
 	bool is_suspended( void ) const;
+	bool is_guiding( void ) const;
 	void do_processing( void );
 	static double precalc_proportional_gain( double g_rate );
 	bool calc_and_set_reticle( double start_x,
@@ -237,7 +346,7 @@ public:
 								double end_dec_x, double end_dec_y,
 								bool *swap_dec,
 								unsigned ra_drift_tm = 0, unsigned dec_drift_tm = 0 );// optional params
-	double calc_phi( double start_x, double start_y, double end_x, double end_y, double len_threshold = 5.0 ) const;
+	static double calc_phi( double start_x, double start_y, double end_x, double end_y, double len_threshold = 5.0 );
 
 	// utility
 	int  calc_quality_rate( void ) const;
@@ -247,6 +356,23 @@ public:
 	bool is_valid_pos( double x, double y, double edge_width = STAR_CLIP_EDGE ) const;
 	void clear_speed_info( void );
 	void get_speed_info( double *ra_v, double *dec_v ) const;
+	int  get_type( void ) const;
+	const char *get_name( void ) const;
+	const std::pair< enum cgmath::status_level, std::string >* get_status_info_for_key( unsigned int *key ) const;
+
+protected:
+	const common_params &m_common_params;
+	int m_type;
+	int m_caps;
+
+	/*! This method should return position of star as vector(x, y, 0) relative to the left top corner of buffer.
+        Note! Reticle position is a center of guiding
+	*/
+	virtual Vector find_star_local_pos( void ) const;
+	virtual void on_start( void ) {}
+	virtual void on_stop( void ) {}
+	void add_quality( double q_val ) const;
+	void set_status_info( enum status_level level, const std::string &txt ) const;
 
 private:
 	struct hfd_item_s
@@ -272,57 +398,54 @@ private:
 		double dist_sum;
 	};
 
-	const common_params &m_common_params;
-
 	// sys...
-	uint32_t ticks;		// global channel ticker
-	double *pdata;		// pointer to data buffer
-	int video_width, video_height;	// video frame dimensions
-	double ccd_pixel_width, ccd_pixel_height, aperture, focal;
-	Matrix	ROT_Z;
-	bool preview_mode, suspended;
+	uint32_t m_ticks;		// global channel ticker
+	mutable double *m_pdata;		// pointer to data buffer
+	int m_video_width, m_video_height;	// video frame dimensions
+	double m_ccd_pixel_width, m_ccd_pixel_height, m_aperture, m_focal;
+	Matrix	m_ROT_Z;
+	bool m_preview_mode, m_suspended;
 	
 	// square variables
-	int square_size;	// size of analysing square
-	double square_square; // square of guiding rect
-	Vector square_pos;	// integer values in double vars.
-	int square_idx;		// index in size list
-	int square_alg_idx;		// index of threshold algorithm
+	int    m_square_size;	// size of analysing square
+	double m_square_square; // square of guiding rect
+	Vector m_square_pos;	// integer values in double vars.
+	int    m_square_idx;		// index in size list
+	int    m_square_alg_idx;		// index of threshold algorithm
 	
 	// sky coord. system vars.
-	Vector star_pos;	// position of star in reticle coord. system
-	Vector scr_star_pos; // screen star position
-	Vector reticle_pos;
-	Vector reticle_org; // origin position
-	Vector reticle_orts[2];
-	double reticle_angle;
+	Vector m_star_pos;	// position of star in reticle coord. system
+	Vector m_scr_star_pos; // screen star position
+	Vector m_reticle_pos;
+	Vector m_reticle_org; // origin position
+	Vector m_reticle_orts[2];
+	double m_reticle_angle;
 	
 	// processing
-	uint32_t  channel_ticks[2];
-	uint32_t  accum_ticks[2];
-	double *drift[2];
-	double drift_integral[2];
-	io_drv::guide_dir dir_checker[5];
+	uint32_t  m_channel_ticks[2];
+	uint32_t  m_accum_ticks[2];
+	double   *m_drift[2];
+	double    m_drift_integral[2];
+	io_drv::guide_dir m_dir_checker[5];
 	
 	// overlays...
-	ovr_params_t overlays;
-	cproc_in_params  in_params;
-	cproc_out_params out_params;
+	ovr_params_t m_overlays;
+	cproc_in_params  m_in_params;
+	cproc_out_params m_out_params;
 	
 	// stat math...
-	bool do_statistics;
-	double sum, sqr_sum;
-	double delta_prev, sigma_prev, sigma;
+	bool   m_do_statistics;
+	double m_sum, m_sqr_sum;
+	double m_delta_prev, m_sigma_prev, m_sigma;
 
 	// quality estimation
 	enum quality
 	{
 		q_stat_len = 5
 	};
-	double q_star_max;
-	double q_bkgd;
-	double q_stat[q_stat_len]; //
-	int    q_control_idx;
+	mutable double m_q_value;
+	double         m_q_stat[q_stat_len]; //
+	int            m_q_control_idx;
 
 	// info
 	double m_ra_drift_v; // pixels per second (fills by calibration procedure)
@@ -331,11 +454,17 @@ private:
 	// hfd
 	mutable struct hfd_sqr_s *m_hfd_sqr_info;
 
+	// misc
+	std::map< std::string, double > m_misc_vars;
+	mutable std::pair< enum status_level, std::string > m_status_info;
+	mutable unsigned int m_status_hash;
+
+	int fix_square_index( int square_index ) const;
+
 	// proc
 	void do_ticks( void );
 	Vector point2arcsec( const Vector &p ) const;
 	Vector arcsec2point( const Vector &asec ) const;
-	Vector find_star_local_pos( void );
 	void process_axes( void );
 	void calc_square_err( void );
 	void calc_quality( void );
@@ -347,5 +476,7 @@ private:
 	cgmath( const cgmath& );
 	cgmath& operator=( const cgmath& );
 };
+
+}
 
 #endif /*GMATH_H_*/

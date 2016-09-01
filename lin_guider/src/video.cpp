@@ -59,8 +59,8 @@ device_desc_t device_desc_list[DEVICE_CNT] = {
 													DT_NULL,
 													false,
 													"Null (default)",
-													NULL,
-													NULL
+													"Simulated camera",
+													"<html><head/><body><p>Simulated camera.</p></body></html>"
 												},
 												{
 													DT_WEBCAM,
@@ -73,29 +73,29 @@ device_desc_t device_desc_list[DEVICE_CNT] = {
 													DT_DSI2PRO,
 													false,
 													"DSI 2 Pro",
-													NULL,
-													NULL
+													"Camera firmware is required",
+													"<html><head/><body><p>Camera <a href=\"https://sourceforge.net/projects/cccd/files/firmware/\"><span style=\"text-decoration: underline; color:#0000ff;\">firmware</span></a> is required.</p></body></html>"
 												},
 												{
 													DT_QHY5,
 													false,
 													"QHY 5",
-													NULL,
-													NULL
+													"Camera firmware is required",
+													"<html><head/><body><p>Camera <a href=\"https://sourceforge.net/projects/cccd/files/firmware/\"><span style=\"text-decoration: underline; color:#0000ff;\">firmware</span></a> is required.</p></body></html>"
 												},
 												{
 													DT_QHY6,
 													false,
 													"QHY 6",
-													NULL,
-													NULL
+													"Camera firmware is required",
+													"<html><head/><body><p>Camera <a href=\"https://sourceforge.net/projects/cccd/files/firmware/\"><span style=\"text-decoration: underline; color:#0000ff;\">firmware</span></a> is required.</p></body></html>"
 												},
 												{
 													DT_QHY5II,
 													false,
 													"QHY 5II / 5LII",
-													NULL,
-													NULL
+													"Camera firmware is required",
+													"<html><head/><body><p>Camera <a href=\"https://sourceforge.net/projects/cccd/files/firmware/\"><span style=\"text-decoration: underline; color:#0000ff;\">firmware</span></a> is required.</p></body></html>"
 												},
 												{
 													DT_ATIK,
@@ -108,8 +108,8 @@ device_desc_t device_desc_list[DEVICE_CNT] = {
 													DT_SX,
 													false,
 													"Starlight Xpress",
-													NULL,
-													NULL
+													"To use SX camera without root, firmware bundle is required",
+													"<html><head/><body><p>To use SX camera without root, <a href=\"https://sourceforge.net/projects/cccd/files/firmware/\"><span style=\"text-decoration: underline; color:#0000ff;\">firmware</span></a> bundle is required.</p></body></html>"
 												},
 												{
 													DT_ASI,
@@ -934,6 +934,9 @@ void cvideo_base::process_frame( void *video_dst, int video_dst_size, void *math
 		pdecoded.ptr16 = psrc.ptr16;
 		break;
 	case V4L2_PIX_FMT_SGRBG12:
+	case V4L2_PIX_FMT_SGBRG12:
+	case V4L2_PIX_FMT_SRGGB12:
+	case V4L2_PIX_FMT_SBGGR12:
 	{
 		int data_len = pix_no * 6;
 		if( !tmp_buffer.ptr ) tmp_buffer.ptr = malloc(data_len);
@@ -944,7 +947,7 @@ void cvideo_base::process_frame( void *video_dst, int video_dst_size, void *math
 		}
 #ifndef __arm__
 		int cell_no = pix_no * 3;
-		bayer_to_rgb48(psrc.ptr16, tmp_buffer.ptr16, capture_params.width, capture_params.height, V4L2_PIX_FMT_SGRBG12);
+		bayer_to_rgb48(psrc.ptr16, tmp_buffer.ptr16, capture_params.width, capture_params.height, capture_params.pixel_format);
 		if( is_grey )
 		{
 			for( i = 0;i < cell_no;i +=3 )
@@ -967,6 +970,9 @@ void cvideo_base::process_frame( void *video_dst, int video_dst_size, void *math
 	}
 		break;
 	case V4L2_PIX_FMT_SGRBG8:
+	case V4L2_PIX_FMT_SGBRG8:
+	case V4L2_PIX_FMT_SRGGB8:
+	case V4L2_PIX_FMT_SBGGR8:
 	{
 		int data_len = pix_no * 3;
 		if( !tmp_buffer.ptr ) tmp_buffer.ptr = malloc(data_len);
@@ -976,7 +982,7 @@ void cvideo_base::process_frame( void *video_dst, int video_dst_size, void *math
 			return;
 		}
 #ifndef __arm__
-		bayer_to_rgb24(psrc.ptr8, tmp_buffer.ptr8, capture_params.width, capture_params.height, V4L2_PIX_FMT_SGRBG8);
+		bayer_to_rgb24(psrc.ptr8, tmp_buffer.ptr8, capture_params.width, capture_params.height, capture_params.pixel_format);
 		if( is_grey )
 		{
 			for( i = 0, j = 0;i < data_len; i +=3, j += 4 )
@@ -1655,6 +1661,9 @@ int cvideo_base::bpp( void ) const
 	case V4L2_PIX_FMT_YVU420:
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_SGRBG8:
+	case V4L2_PIX_FMT_SGBRG8:
+	case V4L2_PIX_FMT_SRGGB8:
+	case V4L2_PIX_FMT_SBGGR8:
 	case V4L2_PIX_FMT_JPEG:
 	case V4L2_PIX_FMT_MJPEG:
 	case V4L2_PIX_FMT_YUYV:
@@ -1662,6 +1671,9 @@ int cvideo_base::bpp( void ) const
 		return 8;
 	case V4L2_PIX_FMT_Y16:
 	case V4L2_PIX_FMT_SGRBG12:
+	case V4L2_PIX_FMT_SGBRG12:
+	case V4L2_PIX_FMT_SRGGB12:
+	case V4L2_PIX_FMT_SBGGR12:
 		return 16;
 	default:
 		log_e("Bpp request for unknown format");
