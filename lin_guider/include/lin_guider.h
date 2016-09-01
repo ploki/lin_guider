@@ -23,7 +23,7 @@
 #ifndef LIN_GUIDER_H
 #define LIN_GUIDER_H
 
-#include <QtGui>
+#include <QtWidgets>
 #include <assert.h>
 
 #include "ui_lin_guider.h"

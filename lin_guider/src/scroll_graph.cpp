@@ -22,8 +22,7 @@
 
 #include <stdlib.h>
 
-#include <QtGui>
-#include <QWidget>
+#include <QtWidgets>
 
 #include "drift_graph.h"
 #include "scroll_graph.h"

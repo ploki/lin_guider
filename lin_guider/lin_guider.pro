@@ -1,7 +1,8 @@
 TEMPLATE = app
 TARGET = lin_guider
 QT += core \
-    gui
+    gui \
+    widgets
 CONFIG(debug, debug|release):DSTDIR = debug
 else:DSTDIR = release
 OBJECTS_DIR = $$DSTDIR/.obj

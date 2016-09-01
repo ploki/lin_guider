@@ -125,7 +125,7 @@ QString u_extract_file_ext( QString fname )
 /*
  char *delim;
 
-	delim = strrchr( fname.toAscii().data(), '.' );
+	delim = strrchr( fname.toLatin1().data(), '.' );
 	if( delim != NULL )
 		return QString( delim+1 );
 
@@ -146,7 +146,7 @@ QString u_extract_file_name( QString fname )
  char *delim, *str;
  int len = 0;
 
- 	str = fname.toAscii().data();
+ 	str = fname.toLatin1().data();
 	delim = strrchr( str, '/' );
 	if( delim != NULL )
 	{

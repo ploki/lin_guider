@@ -20,8 +20,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #ifndef SCROLL_GRAPH_H_
 #define SCROLL_GRAPH_H_
+
+//#include <QtWidgets>
+//#include <QWidget>
+//#include <QImage>
+//#include <QPainter>
+
 
 #include "drift_graph.h"
 

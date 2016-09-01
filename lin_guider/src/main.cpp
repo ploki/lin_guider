@@ -21,7 +21,7 @@
 
 #include "lin_guider.h"
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QApplication>
 #include <stdlib.h>
 
