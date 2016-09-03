@@ -6,6 +6,10 @@ This repository is a copy of the original project which is hosted at sourceforge
 
 If you have problems using the code in this repository, please don't bother original developers, come to me instead.
 
+## About this fork
+
+This is a Qt5 port of the Lin-guider project which is originaly based on Qt4.
+
 ## About the original project
 
 Lin-guider is an astronomical autoguiding program.

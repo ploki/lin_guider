@@ -227,12 +227,12 @@ class cgmath
 {
 	// smart threshold algorithm param
 	// width of outer frame for backgroung calculation
-	static const int SMART_FRAME_WIDTH = 4;
+    static constexpr int SMART_FRAME_WIDTH = 4;
 	// cut-factor above avarage threshold
-	static const double SMART_CUT_FACTOR = 0.1;
+    static constexpr double SMART_CUT_FACTOR = 0.1;
 
-	static const int DITHER_FIXED_TOUT = 2;
-	static const int DITHER_FIXED_TOUT_CLIP = 20;
+    static constexpr int DITHER_FIXED_TOUT = 2;
+    static constexpr int DITHER_FIXED_TOUT_CLIP = 20;
 
 public:
 	enum status_level

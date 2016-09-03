@@ -981,16 +981,15 @@ int cvideo_qhy5ii::set_exposure_time( double exptime )
 {
 	m_qhy5ii_obj->lock();
 
-	bool err = false;
-	if( m_dev_type == DEVICETYPE_QHY5LII )
+    bool err = false;
+    if( m_dev_type == DEVICETYPE_QHY5LII )
         SetExposureTime_QHY5LII( exptime );
-    else
-    if( m_dev_type == DEVICETYPE_QHY5II )
+    else if( m_dev_type == DEVICETYPE_QHY5II )
         SetExposureTime_QHY5II( exptime );
     else
-    	err = true;
+        err = true;
 
-	m_qhy5ii_obj->unlock();
+    m_qhy5ii_obj->unlock();
 
 	return err? EXIT_FAILURE : EXIT_SUCCESS;
 }
