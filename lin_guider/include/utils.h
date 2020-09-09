@@ -56,8 +56,8 @@ void u_msg( const char *fmt, ...);
 
 double u_pow( double a, int n );
 void log_msg( FILE *stm, const char *fmt, ... );
-#define log_i( fmt, ... )	log_msg( stdout, fmt"\n", ##__VA_ARGS__ )
-#define log_e( fmt, ... )	log_msg( stderr, "ERROR: "fmt"\n", ##__VA_ARGS__ )
+#define log_i( fmt, ... )	log_msg( stdout, fmt "\n", ##__VA_ARGS__ )
+#define log_e( fmt, ... )	log_msg( stderr, "ERROR: " fmt "\n", ##__VA_ARGS__ )
 
 uint32_t u_rgb( unsigned char r, unsigned char g, unsigned char b );
 QString u_extract_file_ext( QString fname );
@@ -67,5 +67,6 @@ QString u_get_app_path( void );
 int u_memtok( const char *str, unsigned slen, char c, const char **val, unsigned *vlen, unsigned *pos );
 bool u_make_safe_str( const char* mem, size_t mem_sz, size_t str_sz_max, char *str, size_t *str_len );
 unsigned int u_jshash( const std::string& str );
+const char* u_sprintf( const char *fmt, ... );
 
 #endif

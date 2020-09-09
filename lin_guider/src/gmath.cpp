@@ -82,6 +82,8 @@ const q_control_t q_control_mtd[] = {
 											{ -1, "" }
 											};
 
+const double cgmath::SMART_CUT_FACTOR = 0.1;
+
 
 cgmath::cgmath( const common_params &comm_params ) :
 	m_common_params( comm_params ),
@@ -594,7 +596,7 @@ void cgmath::set_q_control_index( int idx )
 }
 
 
-ovr_params_t *cgmath::prepare_overlays( void )
+const ovr_params_t *cgmath::prepare_overlays( void )
 {
 	// square
 	m_overlays.square_size  = m_square_size;
@@ -606,6 +608,15 @@ ovr_params_t *cgmath::prepare_overlays( void )
 	m_overlays.reticle_pos.y = m_reticle_pos.y;
 
 	return &m_overlays;
+}
+
+
+void cgmath::set_visible_overlays( int ovr_mask, bool set )
+{
+	if( set )
+		m_overlays.visible |= ovr_mask;
+	else
+		m_overlays.visible &= (~ovr_mask);
 }
 
 
@@ -1491,7 +1502,7 @@ bool cgmath::check_drift_dec( void ) const
 			idx = 0;
 	}
 
-	filters::medianfilter( diff_data, (double*)NULL, MAX_ACCUM_CNT );
+	filters::medianfilter( drift_data, (double*)NULL, MAX_ACCUM_CNT );
 
 	for( int i = 0;i < data_cnt;i++ )
 	{

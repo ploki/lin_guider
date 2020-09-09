@@ -23,7 +23,6 @@
 #ifndef CDRIFT_GRAPH_H_
 #define CDRIFT_GRAPH_H_
 
-#include <QtGui>
 #include <QWidget>
 #include <QImage>
 #include <QPainter>

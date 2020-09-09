@@ -26,6 +26,9 @@
 
 #include <vector>
 #include "video.h"
+#include "video_proxy.h"
+
+#define WRONG_IMG
 
 namespace video_drv
 {
@@ -34,7 +37,12 @@ namespace video_drv
 /*
  * generic NULL camera
  */
-class cvideo_null : public cvideo_base
+class cvideo_null :
+#ifdef WRONG_IMG
+		public video_proxy
+#else
+		public cvideo_base
+#endif
 {
 public:
 	cvideo_null( bool stub = false );
@@ -51,6 +59,9 @@ protected:
 	virtual int get_control( unsigned int control_id, param_val_t *val );
 
 private:
+	// example of bilinear fitting
+	virtual int fit( data_ptr dst, const data_ptr src, uint32_t src_wd, uint32_t src_ht );
+
 	virtual int init_device( void );		// get&check capabilities, apply format
 	virtual int uninit_device( void );		// deinit device
 	virtual int start_capturing( void );	// turn on stream
@@ -78,6 +89,13 @@ private:
 	std::vector<emu_star_t> m_emu_badpix;
 	void generate_emu_stars( void );
 	void generate_emu_field( void );
+
+#ifdef WRONG_IMG
+	// static buffer to emulate raw data of incompatible size
+	#define wr_wd 100
+	#define wr_ht 100
+	static uint16_t wrong_raw[ wr_wd * wr_ht ];
+#endif
 };
 
 }

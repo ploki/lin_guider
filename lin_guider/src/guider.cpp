@@ -223,12 +223,6 @@ void guider::set_half_refresh_rate( bool is_half )
 }
 
 
-bool guider::is_guiding( void ) const
-{
-	return is_started;
-}
-
-
 void guider::set_math( lg_math::cgmath *math )
 {
 	assert( math );
@@ -236,6 +230,16 @@ void guider::set_math( lg_math::cgmath *math )
 
 	ui.comboBox_SquareSize->setEnabled( m_math->get_type() == lg_math::GA_CENTROID );
 	setWindowTitle( tr("Guider - ") + QString(m_math->get_name()) );
+}
+
+
+void guider::on_remote_start_stop( bool start )
+{
+	// start
+	if( (is_started && start) || (!is_started && !start) )
+		return;
+
+	onStartStopButtonClick();
 }
 
 
@@ -609,18 +613,18 @@ void guider::onStartStopButtonClick()
 		// start log
 		if( save_drift )
 		{
-			res = fio::check_file_name( ui.lineEdit_DriftFileName->text().toAscii().data() );
+			res = fio::check_file_name( qPrintable( ui.lineEdit_DriftFileName->text() ) );
 			switch( res )
 			{
 			case FIO_EXIST:
-				u_msg( "File '%s' exists", ui.lineEdit_DriftFileName->text().toAscii().data() );
+				u_msg( "File '%s' exists", qPrintable( ui.lineEdit_DriftFileName->text() ) );
 				return;
 			case FIO_ERROR:
-				u_msg( "Unable to write file '%s'. Check permissions", ui.lineEdit_DriftFileName->text().toAscii().data() );
+				u_msg( "Unable to write file '%s'. Check permissions", qPrintable( ui.lineEdit_DriftFileName->text() ) );
 				return;
 			}
 
-			m_logger->start( ui.lineEdit_DriftFileName->text().toAscii().data() );
+			m_logger->start( qPrintable( ui.lineEdit_DriftFileName->text() ) );
 		}
 		ui.pushButton_StartStop->setText( tr("Stop") );
 

@@ -23,8 +23,7 @@
 #ifndef SETUP_DRIVER_H
 #define SETUP_DRIVER_H
 
-#include <QtGui>
-#include <QtGui/QDialog>
+#include <QDialog>
 #include "ui_setup_driver.h"
 #include "io_driver.h"
 

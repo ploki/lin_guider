@@ -180,6 +180,7 @@ typedef struct captureparams_s
 		use_calibration( false ),
 		ext_params( std::map< unsigned int, int >() )
 	{}
+
 	int type;
 	io_method	 io_mtd;
 	unsigned int pixel_format;
@@ -193,26 +194,6 @@ typedef struct captureparams_s
 
 	std::map< unsigned int, int > ext_params;
 
-	struct captureparams_s& operator=( const struct captureparams_s &v )
-	{
-		if( &v == this )
-			return *this;
-		type 			= v.type;
-		io_mtd 			= v.io_mtd;
-		pixel_format 	= v.pixel_format;
-		width 			= v.width;
-		height 			= v.height;
-		fps 			= v.fps;
-		autogain 		= v.autogain;
-		gain 			= v.gain;
-		exposure 		= v.exposure;
-		use_calibration = v.use_calibration;
-
-		if( ext_params.size() <= v.ext_params.size() )
-			ext_params = v.ext_params;
-
-		return *this;
-	}
 }captureparams_t;
 
 

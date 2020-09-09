@@ -92,7 +92,8 @@ void Matrix :: Transpose ()
             x[j][i] = t;
         }
 }
-                
+  
+/*              
 Matrix& Matrix :: operator  = ( const Matrix& A)
 {
  for( int i = 0;i < 4;i++ )
@@ -101,6 +102,7 @@ Matrix& Matrix :: operator  = ( const Matrix& A)
 
  return *this;
 }
+*/
 
 Matrix& Matrix :: operator += ( const Matrix& A)
 {

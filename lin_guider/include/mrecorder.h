@@ -23,7 +23,7 @@
 #ifndef MRECORDER_H
 #define MRECORDER_H
 
-#include <QtGui/QDialog>
+#include <QDialog>
 #include <sys/types.h>
 #include "ui_mrecorder.h"
 #include "avilib.h"
@@ -60,7 +60,7 @@ private:
 	avi_t *pavi;
 
 	void fill_interface( void );
-	bool start( char *fname );
+	bool start( const char *fname );
 	void stop( void );
 	void convert_frame( void );
 	bool is_started;

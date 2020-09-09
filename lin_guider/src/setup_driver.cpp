@@ -313,7 +313,7 @@ void setup_driver::onOkButtonClick()
  char fname[64];
 
 
-	snprintf( fname, sizeof(fname), "%s", ui.lineEdit_IoDevice->text().toAscii().data() );
+	snprintf( fname, sizeof(fname), "%s", qPrintable( ui.lineEdit_IoDevice->text() ) );
 	if( params.next_device_type == io_drv::DT_LPT )
 	{
 		if( access( fname, R_OK|W_OK ) != 0 )

@@ -23,7 +23,7 @@ use Getopt::Std;
 use IO::Socket;
 use File::Basename;
 
-my $VERSION = "0.3";
+my $VERSION = "0.4";
 my $verbose = 0;
 
 my %command_val = (
@@ -33,7 +33,14 @@ my %command_val = (
 	'DITHER' => 4,
 	'DITHER_NO_WAIT_XY' => 5,
 	'GET_DISTANCE' => 6,
-	'SAVE_FRAME_DECORATED' => 7
+	'SAVE_FRAME_DECORATED' => 7,
+	'GUIDER' => 8,
+	'GET_GUIDER_STATE' => 9,
+	'SET_GUIDER_OVLS_POS' => 10,
+	'SET_GUIDER_RETICLE_POS' => 11,
+	'FIND_STAR' => 12,
+	'SET_DITHERING_RANGE' => 13,
+	'GET_RA_DEC_DRIFT' => 14
 );
 my %command_name = reverse %command_val;
 
@@ -50,10 +57,17 @@ sub print_help() {
 	      "This is a GPL software, created by Rumen G.Bogdanovski.\n".
 	      "\n".
 	      "Usage: $N get_ver [-v]\n".
+	      "       $N guider [-v] start|stop\n".
+	      "       $N status [-v]\n".
 	      "       $N dither [-v]\n".
 	      "       $N dither_no_wait [-v] rX rY\n".
 	      "       $N get_distance [-v]\n".
+	      "       $N get_ra_dec_drift [-v]\n".
+	      "       $N set_dithering_range [-v] rage\n".
 	      "       $N set_square_pos [-v] X Y\n".
+	      "       $N set_ovls_pos [-v] X Y\n".
+	      "       $N set_reticle_pos [-v] X Y\n".
+	      "       $N find_star [-v]\n".
 	      "       $N save_frame [-v] filename\n".
 	      "       $N save_frame_decorated [-v] filename\n".
 	      "options:\n".
@@ -159,6 +173,39 @@ sub lg_chat($$) {
 #
 # Lin-guider Commands
 #
+
+sub guider {
+	my @params = @_;
+	if ($#params != 0) {
+		print STDERR "guider: Wrong parameters.\n";
+		return undef;
+	}
+	my ($resp,$cmd) = lg_chat($command_val{GUIDER}, $params[0]);
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^OK/) {
+		return 1;
+	} else {
+		return undef;
+	}
+}
+
+
+sub status {
+	my @params = @_;
+	if ($#params >= 0) {
+		print STDERR "status: Wrong parameters.\n";
+		return undef;
+	}
+	my ($resp,$cmd) = lg_chat($command_val{GET_GUIDER_STATE} ,"");
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^OK/) {
+		return 1;
+	} else {
+		return undef;
+	}
+}
+
+
 sub dither {
 	my @params = @_;
 	if ($#params >= 0) {
@@ -207,6 +254,22 @@ sub get_distance {
 }
 
 
+sub get_ra_dec_drift {
+	my @params = @_;
+	if ($#params >= 0) {
+		print STDERR "get_ra_dec_drift: Wrong parameters.\n";
+		return undef;
+	}
+	my ($resp,$cmd) = lg_chat($command_val{GET_RA_DEC_DRIFT} ,"");
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^Error/) {
+		return undef;
+	} else {
+		return 1;
+	}
+}
+
+
 sub dither_no_wait {
 	my @params = @_;
 	if ($#params != 1) {
@@ -231,7 +294,7 @@ sub set_square_pos {
 		return undef;
 	}
 	my $paramstr = sprintf("%.2f %.2f", $params[0], $params[1]);
-	my ($resp,$cmd) = lg_chat($command_val{SET_GUIDER_SQUARE_POS}, $paramstr);
+	my ($resp,$cmd) = lg_chat($command_val{SET_GUIDER_OVLS_POS}, $paramstr);
 	print "$command_name{$cmd} -> $resp\n";
 	if ($resp =~ /^OK/) {
 		return 1;
@@ -239,6 +302,40 @@ sub set_square_pos {
 		return undef;
 	}
 }
+
+
+sub set_reticle_pos {
+	my @params = @_;
+	if ($#params != 1) {
+		print STDERR "set_sqare_pos: Wrong parameters.\n";
+		return undef;
+	}
+	my $paramstr = sprintf("%.2f %.2f", $params[0], $params[1]);
+	my ($resp,$cmd) = lg_chat($command_val{SET_GUIDER_RETICLE_POS}, $paramstr);
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^OK/) {
+		return 1;
+	} else {
+		return undef;
+	}
+}
+
+
+sub find_star {
+	my @params = @_;
+	if ($#params >= 0) {
+		print STDERR "find_star: Wrong parameters.\n";
+		return undef;
+	}
+	my ($resp,$cmd) = lg_chat($command_val{FIND_STAR} ,"");
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^Error/) {
+		return undef;
+	} else {
+		return 1;
+	}
+}
+
 
 sub save_frame {
 	my @params = @_;
@@ -273,6 +370,23 @@ sub save_frame_decorated {
 }
 
 
+sub set_dithering_range {
+	my @params = @_;
+	if ($#params != 0) {
+		print STDERR "set_dithering_range: Wrong parameters.\n";
+		return undef;
+	}
+	my $paramstr = sprintf("%.2f", $params[0]);
+	my ($resp,$cmd) = lg_chat($command_val{SET_DITHERING_RANGE}, $paramstr);
+	print "$command_name{$cmd} -> $resp\n";
+	if ($resp =~ /^OK/) {
+		return 1;
+	} else {
+		return undef;
+	}
+}
+
+
 # main routine
 sub main {
 	my %options = ();
@@ -285,12 +399,12 @@ sub main {
 	}
 
 	if (getopts("vh", \%options) == undef) {
-		exit 1;
+		exit 2;
 	}
 
 	if (defined($options{h}) or (!defined($command))) {
 		print_help();
-		exit 1;
+		exit 0;
 	}
 
 	if(defined($options{v})) {
@@ -308,6 +422,30 @@ sub main {
 			exit 1;
 		}
 		$verbose && print "Get info succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "guider") {
+		if (! guider(@ARGV)) {
+			$verbose && print STDERR "GUIDER returned error.\n";
+			exit 1;
+		}
+		$verbose && print "GUIDER succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "status") {
+		if (! status(@ARGV)) {
+			$verbose && print STDERR "GET_GUIDER_STATE returned error.\n";
+			exit 1;
+		}
+		$verbose && print "GET_GUIDER_STATE succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "set_dithering_range") {
+		if (! set_dithering_range(@ARGV)) {
+			$verbose && print STDERR "SET_DITHERING_RANGE returned error.\n";
+			exit 1;
+		}
+		$verbose && print "FIND_STAR succeeded.\n";
 		exit 0;
 
 	} elsif ($command eq "dither") {
@@ -334,12 +472,44 @@ sub main {
 		$verbose && print "GET_DISTANCE succeeded.\n";
 		exit 0;
 
+	} elsif ($command eq "get_ra_dec_drift") {
+		if (! get_ra_dec_drift(@ARGV)) {
+			$verbose && print STDERR "GET_RA_DEC_DRIFT returned error.\n";
+			exit 1;
+		}
+		$verbose && print "GET_RA_DEC_DRIFT succeeded.\n";
+		exit 0;
+
 	} elsif ($command eq "set_square_pos") {
 		if (! set_square_pos(@ARGV)) {
 			$verbose && print STDERR "SET_GUIDER_SQUARE_POS returned error.\n";
 			exit 1;
 		}
 		$verbose && print "SET_GUIDER_SQUARE_POS succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "set_ovls_pos") {
+		if (! set_square_pos(@ARGV)) {
+			$verbose && print STDERR "SET_VISIBLE_OVLS_POS returned error.\n";
+			exit 1;
+		}
+		$verbose && print "SET_GUIDER_SQUARE_POS succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "set_reticle_pos") {
+		if (! set_reticle_pos(@ARGV)) {
+			$verbose && print STDERR "SET_RETICLE_POS returned error.\n";
+			exit 1;
+		}
+		$verbose && print "SET_GUIDER_SQUARE_POS succeeded.\n";
+		exit 0;
+
+	} elsif ($command eq "find_star") {
+		if (! find_star(@ARGV)) {
+			$verbose && print STDERR "FIND_STAR returned error.\n";
+			exit 1;
+		}
+		$verbose && print "FIND_STAR succeeded.\n";
 		exit 0;
 
 	} elsif ($command eq "save_frame") {
@@ -364,5 +534,6 @@ sub main {
 
 	} else {
 		print STDERR "There is no such command \"$command\".\n";
+		exit 3;
 	}
 } main;

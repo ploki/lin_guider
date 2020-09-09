@@ -100,7 +100,7 @@ cio_driver_nexstar::~cio_driver_nexstar() {
 	
 	stop();
 
-	if (m_nexstar_handle) return;
+	if (!m_nexstar_handle) return;
 
 	dlclose(m_nexstar_handle);
 	dl_error = dlerror();

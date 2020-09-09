@@ -85,7 +85,7 @@ lin_guider::lin_guider(QWidget *parent)
 
 	ui.setupUi(this);
 
-	setWindowTitle( QString("Lin-guider") );
+	setWindowTitle( QString( APP_NAME ) );
 	setWindowIcon( QIcon(QString::fromUtf8(":/new/prefix1/lin_guider.png")) );
 
 	m_hfd_info_label = new QLabel();
@@ -115,6 +115,14 @@ lin_guider::lin_guider(QWidget *parent)
 	connect( ui.actionAbout, 		SIGNAL(triggered()), this, SLOT(onShowAbout()) );
 	connect( ui.action_Toggle_Calibration_Guider, SIGNAL(triggered()), this, SLOT(onToggleCalibrationGuider()) );
 	connect( ui.actionAdjust2fitCamera, SIGNAL(triggered()), this, SLOT(onAdjust2fitCamera()) );
+	connect( ui.actionZoomOut,      SIGNAL(triggered()), this, SLOT(onZoomOut()) );
+	connect( ui.actionZoomIn,       SIGNAL(triggered()), this, SLOT(onZoomIn()) );
+	{ // setup shortcuts
+		QList<QKeySequence> shortcuts;
+		shortcuts << ui.actionZoomIn->shortcuts() << QKeySequence("Ctrl+=");
+		ui.actionZoomIn->setShortcuts(shortcuts);
+	}
+	connect( ui.actionZoom1_1,      SIGNAL(triggered()), this, SLOT(onZoom1_1()) );
 
 	m_param_block = new params();
 
@@ -285,7 +293,8 @@ It's strongly recommended to fix this issue."), QMessageBox::Ok );
 
 	// set all sizes
 	m_video_out->set_source( m_video_buffer, m_drawer_delegate );
-	ui.videoFrame->resize( m_capture_params.width + 2*ui.videoFrame->frameWidth(), m_capture_params.height + 2*ui.videoFrame->frameWidth() );
+	m_video_out->set_scale( m_ui_params.viewport_scale ); // assign non-standard scale
+	ui.videoFrame->resize( m_video_out->get_size().width() + 2*ui.videoFrame->frameWidth(), m_video_out->get_size().height() + 2*ui.videoFrame->frameWidth() );
 
 	// Init scroller
 	QScrollArea *scrollArea = new QScrollArea( centralWidget() );
@@ -318,7 +327,7 @@ It's strongly recommended to fix this issue."), QMessageBox::Ok );
 	update_sb_video_info();
 	update_sb_io_info();
 
-	set_ui_params();
+	apply_ui_params();
 
 	// test
 	m_long_task_conn = NULL;
@@ -435,7 +444,7 @@ void lin_guider::create_math_object( int ga_type,
 	guider_wnd->set_math( m_math );
 	reticle_wnd->set_math( m_math );
 
-	set_visible_overlays( m_math->get_default_overlay_set(), true );
+	m_math->set_visible_overlays( m_math->get_default_overlay_set(), true );
 
 	m_hfd_info_label->setVisible( m_common_params.hfd_on && m_math->get_type() == lg_math::GA_CENTROID );
 
@@ -564,7 +573,7 @@ void lin_guider::onShowSettings()
 
 	settings_wnd->exec();
 	//check UI changes
-	set_ui_params();
+	apply_ui_params();
 	m_hfd_info_label->setVisible( m_common_params.hfd_on && m_math->get_type() == lg_math::GA_CENTROID );
 	m_hfd_info_label->setText( QString() );
 	// restart server if necessary
@@ -641,6 +650,39 @@ void lin_guider::onAdjust2fitCamera()
 	QSize f = frameSize() - size();
 	QPoint lt = centralWidget()->mapToParent( QPoint(0, 0) );
 	resize( fg.width() + lt.x() + f.width() + 4/*- sb_width*/, fg.height() + lt.y() + f.height() + 4 /*- sb_width*/ /*+ ui.statusbar->height()*/ );
+}
+
+
+void lin_guider::onZoomOut()
+{
+	float k = m_ui_params.viewport_scale;
+	k -= uiparams_s::SCALE_STEP;
+	k = k < uiparams_s::MIN_SCALE ? uiparams_s::MIN_SCALE : k;
+	if( k == m_ui_params.viewport_scale )
+		return;
+	m_ui_params.viewport_scale = k;
+	apply_ui_params();
+}
+
+
+void lin_guider::onZoomIn()
+{
+	float k = m_ui_params.viewport_scale;
+	k += uiparams_s::SCALE_STEP;
+	k = k > uiparams_s::MAX_SCALE ? uiparams_s::MAX_SCALE : k;
+	if( k == m_ui_params.viewport_scale )
+		return;
+	m_ui_params.viewport_scale = k;
+	apply_ui_params();
+}
+
+
+void lin_guider::onZoom1_1()
+{
+	if( m_ui_params.viewport_scale == 1.0 )
+		return;
+	m_ui_params.viewport_scale = 1.0;
+	apply_ui_params();
 }
 
 
@@ -726,6 +768,8 @@ void lin_guider::onRemoteCmd( void )
 		answer_sz = snprintf( answer, answer_sz_max, "v." VERSION );
 	}
 		break;
+	case server::SET_GUIDER_OVL_POS:
+	case server::SET_GUIDER_RETICLE_POS:
 	case server::SET_GUIDER_SQUARE_POS:
 	{
 		if( data_sz )
@@ -750,11 +794,14 @@ void lin_guider::onRemoteCmd( void )
 					continue;
 				}
 			}
-			// move square
 			if( newx != -1 && newy != -1 )
 			{
-				lg_math::ovr_params_t *povr = m_math->prepare_overlays();
-				m_math->move_square( (double)(newx - povr->square_size/2), (double)(newy - povr->square_size/2) );
+				// move reticle or visible overlays
+				if( hdr->cmd == server::SET_GUIDER_RETICLE_POS ) {
+					move_reticle((double)newx, (double)newy);
+				} else {
+					move_visible_ovls((double)newx, (double)newy) ;
+				}
 				answer_sz = snprintf( answer, answer_sz_max, "OK" );
 				break;
 			}
@@ -784,12 +831,12 @@ void lin_guider::onRemoteCmd( void )
 			else
 				res = m_video_buffer->save( QString( home_dir ) + "/" + QString( fname ) + ".bmp", "BMP" );
 			if( res )
-				answer_sz = snprintf( answer, answer_sz_max, "SAVED:%s/%s.bmp", home_dir, fname );
+				answer_sz = snprintf( answer, answer_sz_max, "OK: saved %s/%s.bmp", home_dir, fname );
 			else
-				answer_sz = snprintf( answer, answer_sz_max, "ERROR saving:%s/%s.bmp", home_dir, fname );
+				answer_sz = snprintf( answer, answer_sz_max, "Error: saving:%s/%s.bmp", home_dir, fname );
 		}
 		else
-			answer_sz = snprintf( answer, answer_sz_max, "ERROR saving:Empty filename" );
+			answer_sz = snprintf( answer, answer_sz_max, "Error: saving:Empty filename" );
 	}
 		break;
 	case server::DITHER:
@@ -799,7 +846,7 @@ void lin_guider::onRemoteCmd( void )
 			int tout = m_math->dither();
 			if( tout > 0 ) // do long task
 			{
-				set_visible_overlays( lg_math::ovr_params_t::OVR_RETICLE_ORG, true );
+				m_math->set_visible_overlays( lg_math::ovr_params_t::OVR_RETICLE_ORG, true );
 				m_long_task_conn = pconn;
 				m_timer.setInterval( tout * 1000 );
 				m_timer.start();
@@ -809,7 +856,7 @@ void lin_guider::onRemoteCmd( void )
 				answer_sz = snprintf( answer, answer_sz_max, "Error: %s", m_math->get_dither_errstring( tout ) );
 		}
 		else
-			answer_sz = snprintf( answer, answer_sz_max, "BUSY: in progress..." );
+			answer_sz = snprintf( answer, answer_sz_max, "Busy: in progress..." );
 	}
 		break;
 	case server::DITHER_NO_WAIT_XY:
@@ -843,29 +890,136 @@ void lin_guider::onRemoteCmd( void )
 				if (res < 0) {
 					answer_sz = snprintf(answer, answer_sz_max, "Error: %s", m_math->get_dither_errstring( res ));
 				} else {
-					set_visible_overlays( lg_math::ovr_params_t::OVR_RETICLE_ORG, true );
+					m_math->set_visible_overlays( lg_math::ovr_params_t::OVR_RETICLE_ORG, true );
 					answer_sz = snprintf(answer, answer_sz_max, "OK");
 				}
 				break;
 			}
 		}
 		// error
-		answer_sz = snprintf( answer, answer_sz_max, "Unable to get offsets" );
+		answer_sz = snprintf( answer, answer_sz_max, "Error: Unable to get offsets" );
 	}
-	break;
+		break;
 	case server::GET_DISTANCE:
 	{
 		double dx, dy;
 		int res = m_math->get_distance( &dx, &dy );
 		if( res < 0 )
-			answer_sz = snprintf(answer, answer_sz_max, "Error: %s", m_math->get_dither_errstring( res ));
+			answer_sz = snprintf( answer, answer_sz_max, "Error: %s", m_math->get_dither_errstring( res ) );
 		else
-			answer_sz = snprintf( answer, answer_sz_max, "%0.2f %0.2f", dx,dy );
+			answer_sz = snprintf( answer, answer_sz_max, "%0.2f %0.2f", dx, dy );
 	}
-	break;
+		break;
+	case server::GET_RA_DEC_DRIFT:
+	{
+		if (!m_math->is_guiding()) {
+			answer_sz = snprintf( answer, answer_sz_max, "Error: Guiding not started." );
+		} else {
+			double dra, ddec;
+			m_math->get_star_drift( &dra, &ddec );
+			answer_sz = snprintf( answer, answer_sz_max, "%0.2f %0.2f", dra, ddec );
+		}
+	}
+		break;
+	case server::GUIDER:
+	{
+		if( data_sz )
+		{
+			u_make_safe_str( (const char*)data, data_sz, sizeof(data_str), data_str, &data_str_len );
+
+			if(( strncasecmp( data_str, STRSZ("start") ) != 0 ) &&
+			   ( strncasecmp( data_str, STRSZ("stop") ) != 0 ))
+			{
+				answer_sz = snprintf( answer, answer_sz_max, "Error: Wrong parameter" );
+				break;
+			}
+
+			// close all unnecessary
+			if( setup_video_wnd->isVisible() ) setup_video_wnd->close();
+			if( setup_driver_wnd->isVisible() ) setup_driver_wnd->close();
+			if( reticle_wnd->isVisible() ) reticle_wnd->close();
+			if( recorder_wnd->isVisible() ) recorder_wnd->close();
+			if( settings_wnd->isVisible() ) settings_wnd->close();
+			if( about_wnd->isVisible() ) about_wnd->close();
+			if( !guider_wnd->isVisible() ) guider_wnd->show();
+
+			// parse param
+			if( strncasecmp( data_str, STRSZ("start") ) == 0 )
+			{
+				guider_wnd->on_remote_start_stop( true );
+				answer_sz = snprintf( answer, answer_sz_max, "OK" );
+				break;
+			}
+			else
+			if( strncasecmp( data_str, STRSZ("stop") ) == 0 )
+			{
+				guider_wnd->on_remote_start_stop( false );
+				answer_sz = snprintf( answer, answer_sz_max, "OK" );
+				break;
+			}
+		}
+		// error
+		answer_sz = snprintf( answer, answer_sz_max, "Error: Unable to get (or wrong) parameter" );
+	}
+		break;
+	case server::GET_GUIDER_STATE:
+	{
+		answer_sz = snprintf( answer, answer_sz_max, "%s", m_math->is_guiding() ? "GUIDING" : "IDLE" );
+	}
+		break;
+
+	case server::FIND_STAR:
+	{
+		std::vector< std::pair<Vector, double> > stars;
+		bool res = m_math->find_stars( &stars );
+		if( !res )
+			answer_sz = snprintf( answer, answer_sz_max, "Error: No suitable star in frame" );
+		else
+			answer_sz = snprintf( answer, answer_sz_max, "%0.2f %0.2f", stars[0].first.x, stars[0].first.y);
+	}
+		break;
+	case server::SET_DITHERING_RANGE:
+	{
+		if( data_sz )
+		{
+			u_make_safe_str( (const char*)data, data_sz, sizeof(data_str), data_str, &data_str_len );
+
+			// maximum relative offset
+			double dr = -1;
+			unsigned int parsed = 0, arg_len = 0;
+			const char *arg = NULL;
+			for( int n = 0; u_memtok( data_str, data_str_len, ' ', &arg, &arg_len, &parsed ) && n < 1; n++ )
+			{
+				switch( n )
+				{
+				case 0:	// x
+					dr = strtod( arg, NULL );
+					break;
+				default:
+					continue;
+				}
+			}
+
+			if( dr == -1 )
+			{
+				answer_sz = snprintf( answer, answer_sz_max, "Error: No Range Specified" );
+				break;
+			}
+			else
+			if( dr >= 1 && dr <= 20 ) //max dithering - should not be hardcoded!
+			{
+				m_common_params.dithering_range = dr;
+				answer_sz = snprintf( answer, answer_sz_max, "OK" );
+				break;
+			}
+		}
+		// error
+		answer_sz = snprintf( answer, answer_sz_max, "Error: Out of Range" );
+	}
+		break;
 	default:
 		// write some strange answer
-		answer_sz = snprintf( answer, answer_sz_max, "Unknown command" );
+		answer_sz = snprintf( answer, answer_sz_max, "Error: Unknown command" );
 	}
 
 	// return connection to server
@@ -889,17 +1043,6 @@ void lin_guider::onCmdTimer()
 }
 
 
-void lin_guider::set_visible_overlays( int ovr_mask, bool set )
-{
-	lg_math::ovr_params_t *povr = m_math->prepare_overlays();
-
-	if( set )
-		povr->visible |= ovr_mask;
-	else
-		povr->visible &= (~ovr_mask);
-}
-
-
 void lin_guider::lock_toolbar( bool lock )
 {
 	ui.menubar->setEnabled( !lock );
@@ -909,7 +1052,9 @@ void lin_guider::lock_toolbar( bool lock )
 
 bool lin_guider::activate_drag_object( int x, int y )
 {
-	lg_math::ovr_params_t *povr = m_math->prepare_overlays();
+	m_video_out->scr2xy( &x, &y );
+
+	const lg_math::ovr_params_t *povr = m_math->prepare_overlays();
 
 	for( size_t i = 0;i < ARRAY_SIZE(m_drag_objs);i++ )
 	{
@@ -934,8 +1079,10 @@ bool lin_guider::activate_drag_object( int x, int y )
 				(povr->locked & lg_math::ovr_params_t::OVR_RETICLE) ||
 				!reticle_wnd->isVisible() )
 				continue;
-			if( x > povr->reticle_pos.x - 4 && x < povr->reticle_pos.x + 4 )
-				if( y > povr->reticle_pos.y - 4 && y < povr->reticle_pos.y + 4 )
+			int dx = 4;
+			m_video_out->scr2x( &dx );
+			if( x > povr->reticle_pos.x - dx && x < povr->reticle_pos.x + dx )
+				if( y > povr->reticle_pos.y - dx && y < povr->reticle_pos.y + dx )
 				{
 					m_drag_objs[i].active = true;
 					return true;
@@ -965,6 +1112,8 @@ bool lin_guider::activate_drag_object( int x, int y )
 
 bool lin_guider::deactivate_drag_object( int x, int y )
 {
+	m_video_out->scr2xy( &x, &y );
+
 	for( size_t i = 0;i < ARRAY_SIZE(m_drag_objs);i++ )
 		if( m_drag_objs[i].active )
 		{
@@ -981,8 +1130,55 @@ bool lin_guider::deactivate_drag_object( int x, int y )
 }
 
 
+void lin_guider::move_visible_ovls( int x, int y )
+{
+	m_video_out->scr2xy( &x, &y );
+
+	const lg_math::ovr_params_t *povr = m_math->prepare_overlays();
+
+	if( (povr->visible & lg_math::ovr_params_t::OVR_SQUARE) &&
+		!(povr->locked & lg_math::ovr_params_t::OVR_SQUARE) )
+	{
+		m_math->move_square((double)(x - povr->square_size/2), (double)(y - povr->square_size/2));
+		m_video_out->update();
+	}
+
+	if( (povr->visible & lg_math::ovr_params_t::OVR_OSF) &&
+		!(povr->locked & lg_math::ovr_params_t::OVR_OSF) &&
+		!m_math->is_guiding() )
+	{
+		m_math->move_osf((double)(x - povr->osf_size.x/2), (double)(y - povr->osf_size.y/2));
+		m_video_out->update();
+	}
+}
+
+
+void lin_guider::move_reticle( int x, int y )
+{
+	m_video_out->scr2xy( &x, &y );
+
+	if( m_math->is_guiding() )
+		return;
+
+	const lg_math::ovr_params_t *povr = m_math->prepare_overlays();
+
+	if( (povr->visible & lg_math::ovr_params_t::OVR_OSF) &&
+	  !(povr->locked & lg_math::ovr_params_t::OVR_OSF) )
+		m_math->move_osf((double)(x - povr->osf_size.x/2), (double)(y - povr->osf_size.y/2));
+	else
+	{
+		double px, py, ang;
+		m_math->get_reticle_params( &px, &py, &ang );
+		m_math->set_reticle_params( x, y, ang );
+	}
+	m_video_out->update();
+}
+
+
 void lin_guider::move_drag_object( int x, int y )
 {
+	m_video_out->scr2xy( &x, &y );
+
 	bool upd = false;
 
 	for( size_t i = 0;i < ARRAY_SIZE(m_drag_objs);i++ )
@@ -1020,7 +1216,10 @@ void lin_guider::move_drag_object( int x, int y )
 
 void lin_guider::draw_overlays( QPainter &painter )
 {
-	lg_math::ovr_params_t *povr = m_math->prepare_overlays();
+	const lg_math::ovr_params_t *org_ovr = m_math->prepare_overlays();
+	lg_math::ovr_params_t  ovr = *org_ovr;
+	m_video_out->ovr2scr( &ovr );
+	const lg_math::ovr_params_t *povr = &ovr;
 
 	if( povr->visible & lg_math::ovr_params_t::OVR_OSF )
 	{
@@ -1091,7 +1290,19 @@ void lin_guider::update_sb_io_info( void )
 }
 
 
-void lin_guider::set_ui_params( void )
+void lin_guider::apply_ui_params( void )
 {
+	QString win_title;
+
+	if (m_ui_params.viewport_scale != 1)
+		win_title = QString(APP_NAME " (zoom ") + QString().setNum(m_ui_params.viewport_scale*100) + QString("%)");
+	else
+		win_title = QString(APP_NAME);
+
+	setWindowTitle( QString(win_title) );
+
 	ui.toolBar_Helper->setVisible( m_ui_params.show_helper_TB );
+
+	m_video_out->set_scale( m_ui_params.viewport_scale );
+	ui.videoFrame->resize( m_video_out->get_size().width() + 2*ui.videoFrame->frameWidth(), m_video_out->get_size().height() + 2*ui.videoFrame->frameWidth() );
 }

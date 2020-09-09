@@ -35,6 +35,10 @@
 namespace video_drv
 {
 
+#ifdef WRONG_IMG
+	uint16_t cvideo_null::wrong_raw[ wr_wd * wr_ht ];
+#endif
+
 //-------------------------------------------- GENERIC ---------------------------------------------------------
 // GENERIC stuff
 cvideo_null::cvideo_null( bool stub )
@@ -47,6 +51,8 @@ cvideo_null::cvideo_null( bool stub )
 
 	// this may be placed inside of initialization code
 	//m_sensor_info = video_drv::sensor_info_s( 4.5, 4.5, 640, 480 );
+
+	log_i("cvideo_null()");
 }
 
 
@@ -250,12 +256,20 @@ int cvideo_null::init_device( void )
  		m_sensor_info = video_drv::sensor_info_s( 4.5 * factor, 4.5 * factor, 640 / factor, 480 / factor );
  	}
 
+#ifdef 	WRONG_IMG
+ 	int frame_width  = wr_wd;
+ 	int frame_height = wr_ht;
+#else
+ 	int frame_width  = capture_params.width;
+ 	int frame_height = capture_params.height;
+#endif
  	// init emu
+ 	srand( time( NULL ) );
  	for( int i = 0;i < star_no;i++ )
  	{
  		emu_star_t star;
- 		star.x = rand()%capture_params.width;
- 		star.y = rand()%capture_params.height;
+ 		star.x = rand()%frame_width;
+ 		star.y = rand()%frame_height;
  		star.sigma = 1+(double)rand()/(double)RAND_MAX * 2;
  		star.lum = 2 * (1/3.0 * star.sigma * (1 << bpp()));
 
@@ -265,8 +279,8 @@ int cvideo_null::init_device( void )
  	for( int i = 0;i < bad_pixel_no;i++ )
  	{
  		emu_star_t bp;
- 		bp.x = rand()%capture_params.width;
- 		bp.y = rand()%capture_params.height;
+ 		bp.x = rand()%frame_width;
+ 		bp.y = rand()%frame_height;
  		bp.sigma = 1;
  		bp.lum = pix_max - rand()%(pix_max/2);
 
@@ -335,6 +349,13 @@ int cvideo_null::read_frame( void )
 	// time has gone... emulate and read frame
 	generate_emu_field();
 	generate_emu_stars();
+
+#ifdef WRONG_IMG
+	// wrong_raw contains previously aquired data of random size (wr_wd x wr_ht)
+	// raw - is destination of image fitting
+	// dimensions of raw depend on LG settings
+	fit( raw, data_ptr(wrong_raw), wr_wd, wr_ht );
+#endif
 
 	//filters::medianfilter( (uint8_t*)raw.ptr8, (uint8_t*)NULL, capture_params.width, capture_params.height );
 	//filters::medianfilter( (uint16_t*)raw.ptr16, (uint16_t*)NULL, capture_params.width, capture_params.height );
@@ -453,7 +474,16 @@ int cvideo_null::enum_controls( void )
 
 void cvideo_null::generate_emu_stars( void )
 {
+#ifdef WRONG_IMG
+	data_ptr raw( wrong_raw );
+	int frame_width  = wr_wd;
+	int frame_height = wr_ht;
+#else
 	data_ptr raw = buffers[0].start;
+	int frame_width  = (int)capture_params.width;
+	int frame_height = (int)capture_params.height;
+#endif
+
 	int pix_max = (1 << bpp())-1;
 
 	// Create stars
@@ -474,11 +504,11 @@ void cvideo_null::generate_emu_stars( void )
 		{
 			for( int j = -star_size;j < star_size;j++ )
 			{
-				if( star.x+j < 0 || star.x+j >= (int)capture_params.width ||
-					star.y+i < 0 || star.y+i >= (int)capture_params.height )
+				if( star.x+j < 0 || star.x+j >= frame_width ||
+					star.y+i < 0 || star.y+i >= frame_height )
 					continue;
 
-				size_t idx = (star.y+i)*capture_params.width+star.x+j;
+				size_t idx = (star.y+i)*frame_width+star.x+j;
 
 				double val = (double)star.lum*lum_rand / sqrt(2*M_PI)*exp( -(i*i+j*j)/2/(sigma*sigma) );
 				// add some noise to star
@@ -493,29 +523,85 @@ void cvideo_null::generate_emu_stars( void )
 	for( size_t k = 0;k < m_emu_badpix.size();k++ )
 	{
 		emu_star_t &bp = m_emu_badpix[k];
-		raw.ptr16[bp.y*capture_params.width+bp.x] = bp.lum;
+		raw.ptr16[ bp.y*frame_width+bp.x ] = bp.lum;
 	}
-
-	// Create noise
-/*
-	for i=1:m
-	for j=1:n
-	SF(i,j) = SF(i,j) + 4096*rand(); // Noise simulation
-	SF_CMPR(i,j) = SF_CMPR(i,j) + 4096*(rand() - 0.5);
-	end
-	end
-*/
 }
 
 
 void cvideo_null::generate_emu_field( void )
 {
+#ifdef WRONG_IMG
+	data_ptr raw( wrong_raw );
+	size_t cnt = (size_t)wr_wd * (size_t)wr_ht;
+#else
 	data_ptr raw = buffers[0].start;
-	for( size_t i = 0;i < buffers[0].length;i++ )
+	size_t cnt = buffers[0].length;
+#endif
+
+	for( size_t i = 0;i < cnt;i++ )
 	{
 		raw.ptr16[i] = (32+rand()%(capture_params.gain+1))*256;
 		//raw.ptr16[i] = 32*256 + rand()%100;
 	}
+}
+
+// example of bilinear fitting
+int cvideo_null::fit( data_ptr dst, const data_ptr src, uint32_t src_wd, uint32_t src_ht )
+{
+	if( !dst.ptr || !src.ptr )
+	{
+		log_e("video_proxy::fit(): Failed");
+		return -1;
+	}
+
+	int w  = src_wd;
+	int h  = src_ht;
+	int w2 = capture_params.width;
+	int h2 = capture_params.height;
+
+	uint16_t *pixels = src.ptr16;
+	uint16_t *temp   = dst.ptr16;
+	int A, B, C, D, index, y_index, xr, yr, gray;
+	long x, y = 0, x_diff, y_diff, one_min_x_diff, one_min_y_diff;
+	int x_ratio = (int) (((w - 1) << 16) / w2);
+	int y_ratio = (int) (((h - 1) << 16) / h2);
+	int offset = 0;
+	for( int i = 0;i < h2;i++ )
+	{
+		yr = (int) (y >> 16);
+		y_diff = y - (yr << 16);
+		one_min_y_diff = 65536 - y_diff;
+		y_index = yr * w;
+		x = 0;
+		for( int j = 0;j < w2;j++ )
+		{
+			xr = (int) (x >> 16);
+			x_diff = x - (xr << 16);
+			one_min_x_diff = 65536 - x_diff;
+			index = y_index + xr;
+
+			// range is 0 to oxFFFF thus bitwise AND with 0xffff
+			A = pixels[ index ]     & 0xffff;
+			B = pixels[ index+1 ]   & 0xffff;
+			C = pixels[ index+w ]   & 0xffff;
+			D = pixels[ index+w+1 ] & 0xffff;
+
+			// Y = A(1-w)(1-h) + B(w)(1-h) + C(h)(1-w) + D(w)(h)
+			gray = (int)( (
+					A*one_min_x_diff*one_min_y_diff +
+					B*x_diff*one_min_y_diff +
+					C*y_diff*one_min_x_diff +
+					D*x_diff*y_diff
+			) >> 32 );
+
+			temp[ offset++ ] = gray;
+
+			x += x_ratio;
+		}
+		y += y_ratio;
+	}
+
+	return 0;
 }
 
 }

@@ -21,3 +21,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "common.h"
+
+
+const float uiparams_s::MIN_SCALE = ZOOM_MIN;
+const float uiparams_s::MAX_SCALE = ZOOM_MAX;
+const float uiparams_s::SCALE_STEP = ZOOM_STEP;

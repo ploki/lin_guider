@@ -226,7 +226,7 @@ static int avi_add_index_entry(avi_t *AVI, unsigned char *tag, long flags, unsig
    returns a pointer to avi_t on success, a zero pointer on error
 */
 
-avi_t* AVI_open_output_file(char * filename)
+avi_t* AVI_open_output_file( const char * filename)
 {
    avi_t *AVI;
    int i;
@@ -920,7 +920,7 @@ static int avi_write_data(avi_t *AVI, char *data, unsigned long length, int audi
    /* Add index entry */
 
    //set tag for current audio track
-   sprintf((char *)astr, "0%1dwb", (int)(AVI->aptr+1));
+   snprintf((char *)astr, sizeof(astr), "0%1dwb", (int)(AVI->aptr+1) );
 
    if(audio)
      n = avi_add_index_entry(AVI,astr,0x00,AVI->pos,length);
@@ -1864,7 +1864,7 @@ int AVI_read_data(avi_t *AVI, char *vidbuf, long max_vidbuf,
 
 /* AVI_print_error: Print most recent error (similar to perror) */
 
-const char *(avi_errors[]) =
+const char *avi_errors[] =
 {
   /*  0 */ "avilib - No Error",
   /*  1 */ "avilib - AVI file size limit reached",
@@ -1880,7 +1880,7 @@ const char *(avi_errors[]) =
   /* 11 */ "avilib - AVI file has no MOVI list (corrupted?)",
   /* 12 */ "avilib - AVI file has no video data",
   /* 13 */ "avilib - operation needs an index",
-  /* 14 */ "avilib - Unkown Error"
+  /* 14 */ "avilib - Unknown Error"
 };
 static int num_avi_errors = sizeof(avi_errors)/sizeof(char*);
 

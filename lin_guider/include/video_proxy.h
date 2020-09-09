@@ -1,6 +1,7 @@
 /*
- * about.cpp
+ * video_proxy.h
  *
+ *  Created on: 13.02.2018
  *      Author: gm
  *
  *
@@ -20,43 +21,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QShowEvent>
+#ifndef INCLUDE_VIDEO_PROXY_H_
+#define INCLUDE_VIDEO_PROXY_H_
 
-#include "about.h"
-#include "maindef.h"
+#include <stdint.h>
+
+#include "video.h"
 
 
-about::about(QWidget *parent)
-    : QDialog(parent)
+namespace video_drv
 {
-	ui.setupUi(this);
-	
-	setWindowTitle( tr("About Lin-guider") );
-	
-	QString str = ui.label_Info->text();
-	str.replace( "*VERSION*", QString(CPY_RIGHT(VERSION)) );
-	ui.label_Info->setText( str );
 
-	// connect controls
-	connect( ui.pushButton_Ok, SIGNAL( released() ), this, SLOT( onOk_ButtonPressed() ) );
+class video_proxy : public cvideo_base
+{
+public:
+	virtual ~video_proxy() {}
+
+private:
+	virtual int fit( data_ptr dst, const data_ptr src, uint32_t src_wd, uint32_t src_ht ) = 0;
+};
+
 }
 
-about::~about()
-{
-}
-
-
-void about::showEvent( QShowEvent * event )
-{
-	if( event->spontaneous() )
-		return;
-
-	ui.tabWidget_Pages->setCurrentIndex( 0 );
-}
-
-
-void about::onOk_ButtonPressed()
-{
-	close();
-}
-
+#endif /* INCLUDE_VIDEO_PROXY_H_ */

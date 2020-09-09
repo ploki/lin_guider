@@ -557,6 +557,8 @@ cvideo_base::~cvideo_base()
 	if( lut_to8bit.start.ptr )
 		free( lut_to8bit.start.ptr );
 
+	log_i("~cvideo_base()");
+
 }
 
 
@@ -841,7 +843,7 @@ void cvideo_base::process_frame( void *video_dst, int video_dst_size, void *math
 
 	// perform decoding
 	// NOTE!!!
-	// decoder MUST can render rgba 32bit image if no calibration used. If calibration is used so calibration code renders rgba 32bit output image
+	// decoder SHOULD be able to render rgba 32bit image if no calibration used. If calibration is used so calibration code renders rgba 32bit output image
 	// decoder MUST store decoded data in 'pdecoded' pointer
 	switch( capture_params.pixel_format )
 	{
@@ -1010,6 +1012,8 @@ void cvideo_base::process_frame( void *video_dst, int video_dst_size, void *math
 		return;
 	}
 	}
+
+	// place to decoded image transformation
 
 	// apply calibration frame to data buffer and render output rgba 32bit image
 	if( render_calibrated )
@@ -1871,13 +1875,13 @@ int cvideo_base::detect_best_device( int devtype, const char *devname )
  		// 	if( ret != 0 && errno != EINVAL )
  		// 	{
  		// 		close( cam_fd );
- 		// 		log_i( "unknow '%s' camera detected.Using generic V4L driver.", vcap.name );
+ 		// 		log_i( "Unknown '%s' camera detected.Using generic V4L driver.", vcap.name );
  		// 		return GENERIC_CAM;
  		// 	}
 
  		close( cam_fd );
 
- 		log_i( "unknow '%s' camera detected.", vcap.card );
+ 		log_i( "Unknown '%s' camera detected.", vcap.card );
 
  	}
  		break;

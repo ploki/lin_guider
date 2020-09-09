@@ -38,8 +38,8 @@ settings::settings( lin_guider *parent,
 	QDialog(parent),
     m_pnet_params( net_params ),
     m_pcommon_params( comm_params ),
-    m_ui_params( ui_params ),
-    m_drift_view_params( dv_params )
+    m_pui_params( ui_params ),
+    m_pdrift_view_params( dv_params )
 {
 	ui.setupUi(this);
 
@@ -72,8 +72,14 @@ settings::settings( lin_guider *parent,
 	ui.comboBox_OSFSize->addItem( QString("1/8 frame"), 0.125 );
 
 	int cnt = ARRAY_SIZE( lg_math::alg_desc_list );
-	for( int i = 0;i < cnt;i++ )
+	for( int i = 0; i < cnt; i++ )
 		ui.comboBox_GuiderAlgorithm->addItem( QString(lg_math::alg_desc_list[i].desc), lg_math::alg_desc_list[i].type );
+
+	float zoom_max = ZOOM_MAX * 100;
+	float zoom_step = ZOOM_STEP * 100;
+	for( float i = 0; i < zoom_max; i += zoom_step )
+		ui.comboBox_VP_scale->addItem( QString().setNum((i + zoom_step)) + ((i + zoom_step) == 100 ? tr(" (default)") : QString()),
+				(i + zoom_step) / 100 );
 
 	connect( ui.comboBox_GuiderAlgorithm, SIGNAL(activated(int)), this, SLOT(onGuiderAlgorithmChanged(int)) );
 	connect( ui.pushButton_OK, SIGNAL(clicked()), this, SLOT(onOkButtonClick()) );
@@ -92,14 +98,16 @@ void settings::showEvent( QShowEvent * event )
 	if( event->spontaneous() )
 		return;
 
-	if( !m_pnet_params || !m_pcommon_params )
+	if( !m_pnet_params || !m_pcommon_params || !m_pui_params || !m_pdrift_view_params )
 	{
 		u_msg("settings::showEvent: Critical error! pointers not initialized");
 		event->ignore();
 		return;
 	}
-	m_net_params    = *m_pnet_params;
-	m_common_params = *m_pcommon_params;
+	m_net_params        = *m_pnet_params;
+	m_common_params     = *m_pcommon_params;
+	m_ui_params         = *m_pui_params;
+	m_drift_view_params = *m_pdrift_view_params;
 
 	fill_interface();
 }
@@ -145,17 +153,17 @@ void settings::fill_interface( void )
 	ui.checkBox_DBGVerbosity->setChecked( DBG_VERBOSITY );
 
 	// UI toolbars
-	ui.checkBox_ShowHelperTB->setChecked( m_ui_params->show_helper_TB );
+	ui.checkBox_ShowHelperTB->setChecked( m_ui_params.show_helper_TB );
 
 	// HFD
 	ui.checkBox_HFD_on->setChecked( m_common_params.hfd_on );
 
 	// drift graph
-	ui.comboBox_GraphType->setCurrentIndex( m_drift_view_params->graph_type );
+	ui.comboBox_GraphType->setCurrentIndex( m_drift_view_params.graph_type );
 
 	for( int i = 0;i < ui.comboBox_DriftGraph_nx->count();i++ )
 	{
-		if( ui.comboBox_DriftGraph_nx->itemData( i ).toInt() == m_drift_view_params->cell_nx )
+		if( ui.comboBox_DriftGraph_nx->itemData( i ).toInt() == m_drift_view_params.cell_nx )
 		{
 			ui.comboBox_DriftGraph_nx->setCurrentIndex( i );
 			break;
@@ -163,7 +171,7 @@ void settings::fill_interface( void )
 	}
 	for( int i = 0;i < ui.comboBox_DriftGraph_ny->count();i++ )
 	{
-		if( ui.comboBox_DriftGraph_ny->itemData( i ).toInt() == m_drift_view_params->cell_ny )
+		if( ui.comboBox_DriftGraph_ny->itemData( i ).toInt() == m_drift_view_params.cell_ny )
 		{
 			ui.comboBox_DriftGraph_ny->setCurrentIndex( i );
 			break;
@@ -173,6 +181,15 @@ void settings::fill_interface( void )
 	ui.comboBox_GuiderAlgorithm->setCurrentIndex( ui.comboBox_GuiderAlgorithm->findData( m_common_params.guider_algorithm ) );
 	ui.comboBox_OSFSize->setCurrentIndex( ui.comboBox_OSFSize->findData( m_common_params.osf_size_kx ) );
 	onGuiderAlgorithmChanged( ui.comboBox_GuiderAlgorithm->currentIndex() );
+
+	for( int i = 0;i < ui.comboBox_VP_scale->count();i++ )
+	{
+		if( ui.comboBox_VP_scale->itemData( i ).toFloat() == m_ui_params.viewport_scale )
+		{
+			ui.comboBox_VP_scale->setCurrentIndex( i );
+			break;
+		}
+	}
 }
 
 
@@ -195,7 +212,7 @@ void settings::onOkButtonClick()
 
 	memset( bcast_ip, 0, sizeof(bcast_ip) );
 	bcast_ip_len = ui.lineEdit_IP->text().length();
-	memcpy( bcast_ip, ui.lineEdit_IP->text().toAscii().data(), MIN((int)sizeof(bcast_ip)-1, bcast_ip_len) );
+	memcpy( bcast_ip, qPrintable( ui.lineEdit_IP->text() ), MIN((int)sizeof(bcast_ip)-1, bcast_ip_len) );
 
 	unsigned int parsed = 0, arg_len = 0;
 	const char *arg = NULL;
@@ -233,7 +250,7 @@ void settings::onOkButtonClick()
 	}
 	m_net_params.listen_port = port;
 
-	snprintf( m_net_params.listen_socket, sizeof(m_net_params.listen_socket), "%s", ui.lineEdit_lsocket->text().toAscii().data() );
+	snprintf( m_net_params.listen_socket, sizeof(m_net_params.listen_socket), "%s", qPrintable( ui.lineEdit_lsocket->text() ) );
 
 	m_net_params.use_tcp = ui.checkBox_useTCP->isChecked();
 
@@ -264,9 +281,8 @@ void settings::onOkButtonClick()
 
 	server::set_msg_map( msg_map );
 
-	*m_pnet_params = m_net_params;
-
-	m_ui_params->show_helper_TB = ui.checkBox_ShowHelperTB->isChecked();
+	m_ui_params.show_helper_TB = ui.checkBox_ShowHelperTB->isChecked();
+	m_ui_params.viewport_scale = ui.comboBox_VP_scale->itemData( ui.comboBox_VP_scale->currentIndex() ).toFloat();
 
 	m_common_params.hfd_on = ui.checkBox_HFD_on->isChecked();
 
@@ -275,19 +291,19 @@ void settings::onOkButtonClick()
 		QMessageBox::warning( this, tr("Error"), tr("Graph type - not selected"), QMessageBox::Ok );
 		return;
 	}
-	m_drift_view_params->graph_type = (guider::graph_type_t)ui.comboBox_GraphType->currentIndex();
+	m_drift_view_params.graph_type = (guider::graph_type_t)ui.comboBox_GraphType->currentIndex();
 	if( ui.comboBox_DriftGraph_nx->currentIndex() == -1 )
 	{
 		QMessageBox::warning( this, tr("Error"), tr("X cells - not selected"), QMessageBox::Ok );
 		return;
 	}
-	m_drift_view_params->cell_nx = ui.comboBox_DriftGraph_nx->itemData( ui.comboBox_DriftGraph_nx->currentIndex() ).toInt();
+	m_drift_view_params.cell_nx = ui.comboBox_DriftGraph_nx->itemData( ui.comboBox_DriftGraph_nx->currentIndex() ).toInt();
 	if( ui.comboBox_DriftGraph_ny->currentIndex() == -1 )
 	{
 		QMessageBox::warning( this, tr("Error"), tr("Y cells - not selected"), QMessageBox::Ok );
 		return;
 	}
-	m_drift_view_params->cell_ny = ui.comboBox_DriftGraph_ny->itemData( ui.comboBox_DriftGraph_ny->currentIndex() ).toInt();
+	m_drift_view_params.cell_ny = ui.comboBox_DriftGraph_ny->itemData( ui.comboBox_DriftGraph_ny->currentIndex() ).toInt();
 	if( ui.comboBox_OSFSize->currentIndex() == -1 )
 	{
 		QMessageBox::warning( this, tr("Error"), tr("Subframe size - not selected"), QMessageBox::Ok );
@@ -301,9 +317,17 @@ void settings::onOkButtonClick()
 		return;
 	}
 	m_common_params.guider_algorithm = ui.comboBox_GuiderAlgorithm->itemData( ui.comboBox_GuiderAlgorithm->currentIndex() ).toInt();
+	if( ui.comboBox_VP_scale->currentIndex() == -1 )
+	{
+		QMessageBox::warning( this, tr("Error"), tr("Viewport scale - not selected"), QMessageBox::Ok );
+		return;
+	}
 
 	// final
+	*m_pnet_params = m_net_params;
+	*m_pui_params = m_ui_params;
 	*m_pcommon_params = m_common_params;
+	*m_pdrift_view_params = m_drift_view_params;
 
 	close();
 }

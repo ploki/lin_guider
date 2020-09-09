@@ -24,11 +24,16 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
-#include <QtGui>
+#include <QWidget>
+#include <QPainter>
 #include <assert.h>
 
 #include "maindef.h"
 #include "gmath.h"
+
+#define ZOOM_MAX (2.0)
+#define ZOOM_MIN (0.1)
+#define ZOOM_STEP (0.1)
 
 
 class complex_delegate
@@ -38,6 +43,7 @@ public:
 	virtual void mouse_press( QMouseEvent *event ) = 0;
 	virtual void mouse_release( QMouseEvent *event ) = 0;
 	virtual void mouse_move( QMouseEvent *event ) = 0;
+	virtual void mouse_doubleclick( QMouseEvent *event ) = 0;
 	virtual void draw_overlays( QPainter &painter) = 0;
 };
 
@@ -50,7 +56,10 @@ public:
     explicit custom_drawer(QWidget *parent = NULL ) :
 		QWidget( parent ),
 		m_cd( NULL ),
-		m_image( NULL )
+		m_image( NULL ),
+		m_sz( QSize() ),
+		m_scale_k( 1.0 ),
+		m_scale_inv_k( 1.0 )
 	{
 	}
 	~custom_drawer()
@@ -59,11 +68,78 @@ public:
 	bool set_source( QImage *image, complex_delegate *cd )
 	{
 		m_image = image;
+		m_cd = cd;
 		if( !m_image )
 			return false;
-		resize( m_image->size() );
-		m_cd = cd;
-	return true;
+
+		return set_scale( m_scale_k );
+	}
+	bool set_scale( float k )
+	{
+		if( k > ZOOM_MAX )
+			m_scale_k = ZOOM_MAX;
+		else
+		if( k <= ZOOM_MIN )
+			m_scale_k = ZOOM_MIN;
+		else
+			m_scale_k = k;
+		m_scale_inv_k = 1.0 / m_scale_k;
+
+		if( !m_image )
+		    return false;
+
+		int w = m_image->width();
+		int h = m_image->height();
+		xy2scr( &w, &h );
+		m_sz = QSize( w, h );
+		resize( m_sz );
+
+		return true;
+	}
+	inline void xy2scr( int *x, int *y ) const
+	{
+		if( m_scale_k == 1.0 ) return;
+		*x *= m_scale_k;
+		*y *= m_scale_k;
+	}
+	inline void scr2xy( int *x, int *y ) const
+	{
+		if( m_scale_k == 1.0 ) return;
+		*x *= m_scale_inv_k;
+		*y *= m_scale_inv_k;
+	}
+	inline void x2scr( int *x ) const
+	{
+		if( m_scale_k == 1.0 ) return;
+		*x *= m_scale_k;
+	}
+	inline void scr2x( int *x ) const
+	{
+		if( m_scale_k == 1.0 ) return;
+		*x *= m_scale_inv_k;
+	}
+	inline void ovr2scr( lg_math::ovr_params_t *ovr ) const
+	{
+		if( m_scale_k == 1.0 ) return;
+		ovr->square_size        *= m_scale_k;
+		ovr->square_pos.x       *= m_scale_k;
+		ovr->square_pos.y       *= m_scale_k;
+		ovr->reticle_axis_ra.x  *= m_scale_k;
+		ovr->reticle_axis_ra.y  *= m_scale_k;
+		ovr->reticle_axis_dec.x *= m_scale_k;
+		ovr->reticle_axis_dec.y *= m_scale_k;
+		ovr->reticle_pos.x      *= m_scale_k;
+		ovr->reticle_pos.y      *= m_scale_k;
+		ovr->reticle_org.x      *= m_scale_k;
+		ovr->reticle_org.y      *= m_scale_k;
+		ovr->osf_pos.x          *= m_scale_k;
+		ovr->osf_pos.y          *= m_scale_k;
+		ovr->osf_size.x         *= m_scale_k;
+		ovr->osf_size.y         *= m_scale_k;
+	}
+	QSize get_size( void ) const
+	{
+		return m_sz;
 	}
 protected:
 	void paintEvent(QPaintEvent *)
@@ -72,7 +148,13 @@ protected:
 			return;
 		QPainter painter;
 		painter.begin(this);
-		painter.drawImage( 0, 0, *m_image );
+		if( m_scale_k == 1.0 )
+			painter.drawImage( 0, 0, *m_image );
+		else
+		{
+			QImage si = m_image->scaled( m_sz, Qt::KeepAspectRatio, Qt::FastTransformation );
+			painter.drawImage( 0, 0, si );
+		}
 		if( m_cd )
 			m_cd->draw_overlays( painter );
 		painter.end();
@@ -89,15 +171,24 @@ protected:
 			return;
 		m_cd->mouse_press( event );
 	}
-    void mouseReleaseEvent ( QMouseEvent *event )
+	void mouseReleaseEvent ( QMouseEvent *event )
 	{
 		if( !m_cd )
 			return;
 		m_cd->mouse_release( event );
 	}
+	void mouseDoubleClickEvent ( QMouseEvent *event )
+	{
+		if( !m_cd )
+			return;
+		m_cd->mouse_doubleclick( event );
+	}
 private:
 	complex_delegate *m_cd;
 	QImage           *m_image;
+	QSize m_sz;
+	float m_scale_k;
+	float m_scale_inv_k;
 };
 
 
@@ -142,7 +233,23 @@ public:
 	double osf_size_ky;
 
 	int guider_algorithm;
-
 };
+
+
+typedef struct uiparams_s
+{
+	static const float MIN_SCALE;
+	static const float MAX_SCALE;
+	static const float SCALE_STEP;
+
+	uiparams_s() :
+		half_refresh_rate( false ),
+		show_helper_TB( false ),
+		viewport_scale( 1.0 )
+	{}
+	bool half_refresh_rate;
+	bool show_helper_TB;
+	float viewport_scale;
+}uiparams_t;
 
 #endif /* COMMON_H_ */

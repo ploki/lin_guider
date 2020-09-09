@@ -20,6 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
@@ -27,31 +28,30 @@
 #include <string>
 #include <algorithm>
 
+#include <QString>
 #include <QFileInfo>
 
 #include "utils.h"
 
 
-void u_msg( const char *fmt, ...)
+const char *vasprintf( const char *fmt, va_list args )
 {
-/*
-		va_list args;
-		char buf[1024];
+	static char buffer[ 1024 ];
 
-		va_start(args, fmt);
-		int ret = vsnprintf( buf, sizeof(buf)-1, fmt, args );
-		va_end(args);
-*/
-        va_list     argptr;
-        QString     text;
+	vsnprintf( buffer, sizeof( buffer ) - 1, fmt, args );
 
-        va_start (argptr,fmt);
-        text.vsprintf(fmt, argptr);
-        va_end (argptr);
+    return buffer;
+}
 
-        QMessageBox::information( NULL, "Info...", text, QMessageBox::Ok, QMessageBox::Ok );
 
-        //QMessageBox::information( this, "Info...", QString().sprintf("test = %d", 13), QMessageBox::Ok, QMessageBox::Ok );
+void u_msg( const char *fmt, ... )
+{
+	va_list args;
+
+	va_start( args, fmt );
+	const char *text = vasprintf( fmt, args );
+	va_end( args );
+	QMessageBox::information( NULL, "Info...", text, QMessageBox::Ok, QMessageBox::Ok );
 }
 
 
@@ -60,7 +60,7 @@ bool u_yes( const QString &question )
 	if( QMessageBox::question( NULL, "Question", question, QMessageBox::Yes | QMessageBox::No ) == QMessageBox::Yes )
 	    return true;
 
- return false;
+	return false;
 }
 
 
@@ -268,4 +268,17 @@ unsigned int u_jshash( const std::string& str )
 		hash ^= ((hash << 5) + p[i] + (hash >> 2));
 
 	return hash;
+}
+
+
+const char *u_sprintf( const char *fmt, ... )
+{
+	va_list args;
+	const char *str = NULL;
+
+	va_start( args, fmt );
+	str = vasprintf( fmt, args );
+	va_end (args);
+
+    return str;
 }

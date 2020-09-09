@@ -1,13 +1,15 @@
 TEMPLATE = app
 TARGET = lin_guider
 QT += core \
-    gui
-CONFIG(debug, debug|release):DSTDIR = debug
-else:DSTDIR = release
-OBJECTS_DIR = $$DSTDIR/.obj
-MOC_DIR = $$DSTDIR/.moc
-UI_DIR = $$DSTDIR/.ui
-RCC_DIR = $$DSTDIR/.rcc
+    gui \
+    widgets
+CONFIG(debug, debug|release):CONFIGURATION = debug
+else:CONFIGURATION = release
+DESTDIR = build/$$CONFIGURATION
+OBJECTS_DIR = $$DESTDIR/.obj
+MOC_DIR = $$DESTDIR/.moc
+UI_DIR = $$DESTDIR/.ui
+RCC_DIR = $$DESTDIR/.rcc
 HEADERS += include/drift_graph.h \
     include/target_graph.h \
     include/math/gmath_donuts.h \
@@ -65,6 +67,7 @@ HEADERS += include/drift_graph.h \
     include/guider.h \
     include/scroll_graph.h \
     include/decoder.h \
+    include/video_proxy.h \
     include/video.h \
     include/setup_driver.h \
     include/timer.h \
@@ -149,3 +152,10 @@ INCLUDEPATH += include/ \
 LIBS += -lusb-1.0 \
     -ldl \
     -lrt
+
+*-g++* {
+    CXXVer = $$system(echo | $$QMAKE_CXX -dM -E - | fgrep __GNUC__ | cut -d\" \" -f 3)
+    message("g++: "$$CXXVer)
+    greaterThan(CXXVer, 6):QMAKE_CXXFLAGS += -Wimplicit-fallthrough=0
+    greaterThan(CXXVer, 7):QMAKE_CXXFLAGS += -Wformat-truncation=0
+}

@@ -22,7 +22,7 @@
 #ifndef ABOUT_H
 #define ABOUT_H
 
-#include <QtGui>
+#include <QDialog>
 #include "ui_about.h"
 
 

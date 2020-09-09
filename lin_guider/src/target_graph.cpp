@@ -131,10 +131,12 @@ void target_graph::draw_grid( void )
 			                    (double)i*m_grid_view_step_x, (double)i*m_grid_view_step_y);
 		}
 		else
+		{
 			m_pen.setColor( GRID_COLOR );
 			m_canvas.setPen( m_pen );
 			m_canvas.drawEllipse(QPointF(m_half_buffer_size_wd, m_half_buffer_size_ht),
 			                    (double)i*m_grid_view_step_x, (double)i*m_grid_view_step_y);
+		}
 	}
 
 	// draw digits
@@ -144,7 +146,7 @@ void target_graph::draw_grid( void )
 	for( i = 0; i < m_gridy_N; i++ )
 	{
 		y = (double)i * m_grid_view_step_y;
-		str.sprintf("%d\"", (int)(m_half_vis_range_y - m_grid_step_y*i) );
+		str = QString( u_sprintf("%d\"", (int)(m_half_vis_range_y - m_grid_step_y*i) ) );
 		m_canvas.drawText( x, y + m_font_ht_k, str );
 	}
 }

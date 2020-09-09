@@ -262,7 +262,7 @@ extern "C"
 {
 #endif
 
-avi_t* AVI_open_output_file(char * filename);
+avi_t* AVI_open_output_file( const char * filename);
 void AVI_set_video(avi_t *AVI, int width, int height, double fps, char *compressor);
 void AVI_set_audio(avi_t *AVI, int channels, long rate, int bits, int format, long mp3rate);
 int  AVI_write_frame(avi_t *AVI, char *data, long bytes, int keyframe);

@@ -127,13 +127,6 @@ public:
 	};
 	~pulse_event(){};
 
-	pulse_event( const pulse_event &p )
-	{
-		m_pulse_dir 	= p.m_pulse_dir;
-		m_wait_time		= p.m_wait_time;
-		m_current_time 	= p.m_current_time;
-	};
-
 	inline bool is_RA()
 	{
 		return m_pulse_dir == RA_INC_DIR || m_pulse_dir == RA_DEC_DIR;

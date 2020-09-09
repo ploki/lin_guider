@@ -49,8 +49,6 @@ params::params()
 	snprintf( m_dev_name_video, sizeof(m_dev_name_video)-1, "/dev/video0" );
 	snprintf( m_dev_name_io, sizeof(m_dev_name_io)-1, "/dev/parport0" );
 
-	m_ui_params.half_refresh_rate = false;
-
 	m_capture_next_params.width   = 0;
 	m_capture_next_params.height  = 0;
 	
@@ -108,18 +106,18 @@ bool params::load( void )
  QString str;
  bool ok;
 
- 	if( access(settings.fileName().toAscii().data(), R_OK|W_OK) != 0 )
+ 	if( access( qPrintable( settings.fileName() ), R_OK|W_OK) != 0 )
  	{
- 		log_e( "Unable to find config file %s\nusing defaults", settings.fileName().toAscii().data() );
+ 		log_e( "Unable to find config file %s\nusing defaults", qPrintable( settings.fileName() ) );
  		return false;
  	}
 
 	// device names
 	settings.beginGroup("devices");
 		str = settings.value("video_device", "/dev/video0").toString();
-		snprintf( m_dev_name_video, sizeof(m_dev_name_video), "%s", str.toAscii().data() );
+		snprintf( m_dev_name_video, sizeof(m_dev_name_video), "%s", qPrintable( str ) );
 		str = settings.value("io_device", "/dev/parport0").toString();
-		snprintf( m_dev_name_io, sizeof(m_dev_name_io), "%s", str.toAscii().data() );
+		snprintf( m_dev_name_io, sizeof(m_dev_name_io), "%s", qPrintable( str ) );
 	settings.endGroup();
 
 	// io bit map
@@ -208,6 +206,7 @@ bool params::load( void )
 			QByteArray wnd_state = settings.value("guider_wnd_state").toByteArray();
 			set_wnd_geometry_state( "guider_wnd", std::make_pair( wnd_geometry, wnd_state ) );
 		}
+		m_ui_params.viewport_scale = settings.value( "viewport_scale", 1.0 ).toFloat(&ok);
 	settings.endGroup();
 
 	// guider params
@@ -233,11 +232,11 @@ bool params::load( void )
 	// network
 	settings.beginGroup("net");
 		str = settings.value("bcast_ip", "127.0.0.1").toString();
-		snprintf( m_net_params.bcast_ip, sizeof(m_net_params.bcast_ip), "%s", str.toAscii().data() );
+		snprintf( m_net_params.bcast_ip, sizeof(m_net_params.bcast_ip), "%s", qPrintable( str ) );
 		m_net_params.bcast_port = settings.value("bcast_port", "5001").toInt(&ok);
 		m_net_params.use_tcp = settings.value( "use_tcp", false ).toBool();
 		str = settings.value("listen_socket", "/tmp/lg_ss").toString();
-		snprintf( m_net_params.listen_socket, sizeof(m_net_params.listen_socket), "%s", str.toAscii().data() );
+		snprintf( m_net_params.listen_socket, sizeof(m_net_params.listen_socket), "%s", qPrintable( str ) );
 		m_net_params.listen_port = settings.value("listen_port", "5656").toInt(&ok);
 	settings.endGroup();
 
@@ -269,9 +268,9 @@ bool params::load( void )
 
 	// load device config
 	QSettings dev_settings( "GM_software", QString("devconf")+QString().setNum(m_device_params.type) );
-	if( access(dev_settings.fileName().toAscii().data(), R_OK|W_OK) != 0 )
+	if( access( qPrintable( dev_settings.fileName() ), R_OK|W_OK) != 0 )
 	{
-		log_e( "Unable to find config file '%s'\nusing defaults", dev_settings.fileName().toAscii().data() );
+		log_e( "Unable to find devconf file '%s'\nusing defaults", qPrintable( dev_settings.fileName() ) );
 
 		// fill by out-of-range value
 		for( i = 0;i < 8;i++ )
@@ -386,6 +385,7 @@ bool params::save( void )
 				settings.setValue("guider_wnd_state", it->second.second );
 			}
 		}
+		settings.setValue( "viewport_scale", (double)m_ui_params.viewport_scale );
 	settings.endGroup();
 
 	// guider params

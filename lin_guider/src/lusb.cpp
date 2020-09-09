@@ -38,7 +38,12 @@ int lusb::initialize( void )
  		ret = libusb_init( NULL );
  		if( ret == 0 )
  		{
+#if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000106)
+			libusb_set_option( NULL, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_NONE );
+#else
  			libusb_set_debug( NULL, 0 );
+#endif
+ 			
  			log_i( "lusb::initialize(): Success" );
  		}
  		else

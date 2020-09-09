@@ -32,7 +32,7 @@ public:
   double x [4][4];
   Matrix();
   Matrix( double );
-  Matrix& operator  = ( const Matrix& );
+//  Matrix& operator  = ( const Matrix& );
   Matrix& operator += ( const Matrix& );
   Matrix& operator -= ( const Matrix& );
   Matrix& operator *= ( const Matrix& );
